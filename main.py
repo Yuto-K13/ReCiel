@@ -35,7 +35,17 @@ class Ciel(commands.Bot):
 
     async def load_all_extensions(self):
         for name in self.extension_files():
-            await self.load_extension(name)
+            try:
+                await self.load_extension(name)
+            except discord.DiscordException as e:
+                print(f"Failed to load {name}: {e}")
+
+    async def unload_all_extensions(self):
+        for name in tuple(self.extensions):
+            try:
+                await self.unload_extension(name)
+            except discord.DiscordException as e:
+                print(f"Failed to unload {name}: {e}")
 
     async def command_sync(self):
         debug_guild_id = os.getenv("DEBUG_GUILD_ID")
