@@ -85,6 +85,9 @@ class Ciel(commands.Bot):
         debug_status = "Enabled" if self.debug else "Disabled"
         utils.logger.info(f"Ciel Start-up (User: {user}, Debug Mode: {debug_status})")
 
+    async def on_message(self, message: discord.Message):
+        pass  # process_commands 関数を無効化
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Generic Discord Bot built with discord.py.")
