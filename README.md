@@ -53,9 +53,19 @@ uv run python main.py
 
 ```text
 .
+├── cogs/              # コグ（機能拡張）ディレクトリ
+│   ├── __init__.py    # 初期化処理
+│   ├── develop.py     # 開発用コマンド
+│   ├── error.py       # エラーハンドリング
+│   └── general.py     # 一般コマンド
+├── utils/             # ユーティリティ（補助機能）ディレクトリ
+│   ├── __init__.py    # 初期化処理
+│   ├── decorators.py  # コマンド用デコレーター
+│   └── logging.py     # ロギング機能
 ├── .env               # 環境変数ファイル (トークンなど)
 ├── .gitignore         # Gitで無視するファイル
 ├── main.py            # メインファイル
+├── ciel.py            # Bot本体クラス
 ├── pyproject.toml     # プロジェクト設定と依存関係
 ├── uv.lock            # 依存関係のロックファイル
 └── README.md          # このファイル
