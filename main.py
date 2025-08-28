@@ -1,6 +1,6 @@
 import os
 from argparse import ArgumentParser
-from typing import Iterator
+from typing import Iterator, Optional
 
 import discord
 import dotenv
@@ -30,6 +30,27 @@ class Ciel(commands.Bot):
 
         super().run(*args, **kwargs)
 
+    async def load_extension(self, name: str, *, package: Optional[str] = None):
+        utils.logger.debug(f"Loading Extension: {name}")
+        try:
+            await super().load_extension(name, package=package)
+        except discord.DiscordException:
+            utils.logger.exception(f"Error while Loading Extension: {name}")
+
+    async def unload_extension(self, name: str, *, package: Optional[str] = None):
+        utils.logger.debug(f"Unloading Extension: {name}")
+        try:
+            await super().unload_extension(name, package=package)
+        except discord.DiscordException:
+            utils.logger.exception(f"Error while Unloading Extension: {name}")
+
+    async def reload_extension(self, name: str, *, package: Optional[str] = None):
+        utils.logger.debug(f"Reloading Extension: {name}")
+        try:
+            await super().reload_extension(name, package=package)
+        except discord.DiscordException:
+            utils.logger.exception(f"Error while Reloading Extension: {name}")
+
     def extension_files(self) -> Iterator[str]:
         for f in os.listdir("./cogs"):
             name, ext = os.path.splitext(f)
@@ -40,17 +61,11 @@ class Ciel(commands.Bot):
 
     async def load_all_extensions(self):
         for name in self.extension_files():
-            try:
-                await self.load_extension(name)
-            except discord.DiscordException:
-                utils.logger.exception(f"Error while Loading Extension: {name}")
+            await self.load_extension(name)
 
     async def unload_all_extensions(self):
         for name in tuple(self.extensions):
-            try:
-                await self.unload_extension(name)
-            except discord.DiscordException:
-                utils.logger.exception(f"Error while Unloading Extension: {name}")
+            await self.unload_extension(name)
 
     async def command_sync(self):
         debug_guild_id = os.getenv("DEBUG_GUILD_ID")
