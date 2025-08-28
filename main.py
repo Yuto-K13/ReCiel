@@ -6,6 +6,8 @@ import discord
 import dotenv
 from discord.ext import commands
 
+import utils
+
 
 class Ciel(commands.Bot):
     IGNORE_EXTENSION_FILES = ["__init__"]
@@ -23,6 +25,9 @@ class Ciel(commands.Bot):
         if self.debug:
             token = os.getenv("DEBUG_DISCORD_TOKEN", token)
         kwargs.setdefault("token", token)
+        kwargs.setdefault("log_handler", None)
+        utils.setup_logging(self.debug)
+
         super().run(*args, **kwargs)
 
     def extension_files(self) -> Iterator[str]:
@@ -37,15 +42,15 @@ class Ciel(commands.Bot):
         for name in self.extension_files():
             try:
                 await self.load_extension(name)
-            except discord.DiscordException as e:
-                print(f"Failed to load {name}: {e}")
+            except discord.DiscordException:
+                utils.logger.exception(f"Error while Loading Extension: {name}")
 
     async def unload_all_extensions(self):
         for name in tuple(self.extensions):
             try:
                 await self.unload_extension(name)
-            except discord.DiscordException as e:
-                print(f"Failed to unload {name}: {e}")
+            except discord.DiscordException:
+                utils.logger.exception(f"Error while Unloading Extension: {name}")
 
     async def command_sync(self):
         debug_guild_id = os.getenv("DEBUG_GUILD_ID")
@@ -61,7 +66,9 @@ class Ciel(commands.Bot):
         await self.command_sync()
 
     async def on_ready(self):
-        print("Ciel Start-up")
+        user = self.user.name if self.user else "Unknown"
+        debug_status = "Enabled" if self.debug else "Disabled"
+        utils.logger.info(f"Ciel Start-up (User: {user}, Debug Mode: {debug_status})")
 
 
 if __name__ == "__main__":
