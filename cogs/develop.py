@@ -3,10 +3,13 @@ from typing import Optional
 from discord import Color, Embed, Interaction, app_commands
 from discord.ext import commands
 
-from main import Ciel
+from ciel import Ciel
 
 
 class Develop(commands.Cog):
+    def __init__(self, bot: Ciel):
+        self.bot = bot
+
     @app_commands.command()
     async def extensions(self, interaction: Interaction):
         """Show All Extensions"""
@@ -27,9 +30,6 @@ class Develop(commands.Cog):
             value="\n".join(extension_loaded - extension_files) or "No Extensions",
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    def __init__(self, bot: Ciel):
-        self.bot = bot
 
     @app_commands.command()
     async def reload(self, interaction: Interaction, extension: Optional[str] = None):

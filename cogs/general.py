@@ -1,11 +1,10 @@
 from typing import Union
 
-import discord
 from discord import Color, Embed, Interaction, app_commands
 from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
 from discord.ext import commands
 
-from main import Ciel
+from ciel import Ciel
 
 
 class General(commands.Cog):
