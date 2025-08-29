@@ -65,8 +65,8 @@ class Ciel(commands.Bot):
         debug_guild_id = os.getenv("DEBUG_GUILD_ID")
         if self.debug and debug_guild_id:
             try:
-                self.debug_guild = self.get_guild(int(debug_guild_id))
-            except ValueError:
+                self.debug_guild = await self.fetch_guild(int(debug_guild_id))
+            except (ValueError, DiscordException):
                 logging.logger.error(f"Invalid DEBUG_GUILD_ID: {debug_guild_id}")
         if self.debug_guild:
             self.tree.copy_global_to(guild=self.debug_guild)
