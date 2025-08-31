@@ -3,8 +3,8 @@ from typing import Optional
 from discord import Color, Embed, Interaction, app_commands
 from discord.ext import commands
 
+import utils
 from ciel import Ciel
-from utils import decorators
 
 
 class Develop(commands.Cog):
@@ -12,7 +12,7 @@ class Develop(commands.Cog):
         self.bot = bot
 
     @app_commands.command()
-    @decorators.developer_only()
+    @utils.developer_only()
     async def extensions(self, interaction: Interaction):
         """Show All Extensions"""
         extension_files = set(self.bot.extension_files())
@@ -34,7 +34,7 @@ class Develop(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
-    @decorators.developer_only()
+    @utils.developer_only()
     async def reload(self, interaction: Interaction, extension: Optional[str] = None):
         """Reload the Specified or All Extensions."""
         embed = Embed(title="Reloading...", colour=Color.blue())
