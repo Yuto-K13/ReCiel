@@ -149,6 +149,7 @@ class Ciel(commands.Bot):
         await self.tree.sync_all()
 
     async def setup_hook(self):
+        await self.load_all_extensions()
         if self.debug:
             debug_guild_id = os.getenv("DEBUG_GUILD_ID")
             try:
@@ -156,9 +157,10 @@ class Ciel(commands.Bot):
             except (ValueError, DiscordException) as error:
                 utils.logger.exception(f"Couldn't Fetch Guild (ID: {debug_guild_id})")
                 raise error
+            self.tree.copy_global_to(guild=self.debug_guild)
+            self.tree.clear_commands(guild=None)
 
-        await self.load_all_extensions()
-        await self.command_sync()
+        await self.tree.map_all_commands()
 
     async def on_ready(self):
         user = self.user.name if self.user else "Unknown"
