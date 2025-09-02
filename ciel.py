@@ -1,7 +1,10 @@
+import inspect
 import os
 from typing import Iterator, Optional
 
-from discord import DiscordException, Intents, Message
+from discord import DiscordException, Intents, Interaction, Message, app_commands
+from discord.abc import Snowflake
+from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
 from discord.ext import commands
 
 import utils
@@ -9,11 +12,87 @@ import utils
 IGNORE_EXTENSION_FILES = ["__init__"]
 
 
+class CielTree(app_commands.CommandTree):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._command_map: dict[Command, AppCommand | AppCommandGroup] = {}
+
+    async def sync(self, *, guild: Optional[Snowflake] = None) -> list[AppCommand]:
+        utils.logger.debug(f"Syncing Commands (Guild: {guild})")
+        app_cmds = await super().sync(guild=guild)
+        cmds = self.get_commands(guild=guild)
+        self._map_commands(cmds, app_cmds)
+        return app_cmds
+
+    async def sync_all(self):
+        self._command_map.clear()
+        if self.get_commands(guild=None):
+            await self.sync(guild=None)
+        for guild_id in self._guild_commands.keys():
+            guild = await self.client.fetch_guild(guild_id)
+            if self.get_commands(guild=guild):
+                await self.sync(guild=guild)
+
+    def _map_commands(
+        self,
+        commands: list[Command | Group],
+        app_commands: list[AppCommand | AppCommandGroup],
+    ):
+        for command in commands:
+            for app_command in app_commands:
+                if isinstance(app_command, Argument):
+                    continue
+                if command.name == app_command.name:
+                    break
+            else:
+                continue
+            if isinstance(command, Group):
+                self._map_commands(command.commands, app_command.options)
+                continue
+
+            self._command_map[command] = app_command
+
+    async def map_commands(self, guild: Optional[Snowflake] = None):
+        commands = self.get_commands(guild=guild)
+        app_commands = await self.fetch_commands(guild=guild)
+        self._map_commands(commands, app_commands)
+
+    async def map_all_commands(self):
+        await self.map_commands(guild=None)
+        for guild_id in self._guild_commands.keys():
+            guild = await self.client.fetch_guild(guild_id)
+            await self.map_commands(guild=guild)
+
+    def get_app_command(
+        self, command: Command
+    ) -> Optional[AppCommand | AppCommandGroup]:
+        return self._command_map.get(command)
+
+    async def check_can_run(self, command: Command, interaction: Interaction) -> bool:
+        for check in command.checks:
+            try:
+                result = check(interaction)
+                if inspect.isawaitable(result):
+                    result = await result
+            except app_commands.AppCommandError:
+                return False
+            if not result:
+                return False
+        return True
+
+
 class Ciel(commands.Bot):
+    tree: CielTree
+
     def __init__(self, intents=Intents.default(), debug: bool = False, **options):
         self.debug = debug
         self.debug_guild = None
-        super().__init__(command_prefix="", help_command=None, intents=intents)
+        super().__init__(
+            command_prefix="",
+            help_command=None,
+            tree_cls=CielTree,
+            intents=intents,
+        )
 
     def run(self, token: str = "", **options):
         if not token:
@@ -62,17 +141,22 @@ class Ciel(commands.Bot):
             await self.unload_extension(name)
 
     async def command_sync(self):
-        debug_guild_id = os.getenv("DEBUG_GUILD_ID")
-        if self.debug and debug_guild_id:
-            try:
-                self.debug_guild = await self.fetch_guild(int(debug_guild_id))
-            except (ValueError, DiscordException):
-                utils.logger.error(f"Invalid DEBUG_GUILD_ID: {debug_guild_id}")
-        if self.debug_guild:
+        if self.debug and self.debug_guild:
             self.tree.copy_global_to(guild=self.debug_guild)
-        await self.tree.sync(guild=self.debug_guild)
+            self.tree.clear_commands(guild=None)
+            await self.tree.sync(guild=self.debug_guild)
+            return
+        await self.tree.sync_all()
 
     async def setup_hook(self):
+        if self.debug:
+            debug_guild_id = os.getenv("DEBUG_GUILD_ID")
+            try:
+                self.debug_guild = await self.fetch_guild(int(debug_guild_id))
+            except (ValueError, DiscordException) as error:
+                utils.logger.exception(f"Couldn't Fetch Guild (ID: {debug_guild_id})")
+                raise error
+
         await self.load_all_extensions()
         await self.command_sync()
 
