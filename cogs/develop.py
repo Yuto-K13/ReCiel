@@ -41,7 +41,7 @@ class Develop(commands.Cog):
             await self.bot.load_all_extensions()
         elif f"cogs.{extension}" in self.bot.extensions:
             await self.bot.reload_extension(f"cogs.{extension}")
-        elif f"cogs.{extension}" not in self.bot.extension_files():
+        elif f"cogs.{extension}" in self.bot.extension_files():
             await self.bot.load_extension(f"cogs.{extension}")
         else:
             raise commands.ExtensionNotFound(extension)
