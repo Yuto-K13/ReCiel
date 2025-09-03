@@ -1,6 +1,6 @@
 from typing import Optional
 
-from discord import Color, Embed, Interaction, app_commands
+from discord import Color, Interaction, app_commands
 from discord.ext import commands
 
 import utils
@@ -15,21 +15,11 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def extensions(self, interaction: Interaction):
         """Show All Extensions"""
-        extension_files = set(self.bot.extension_files())
-        extension_loaded = set(self.bot.extensions)
-
-        embed = Embed(title="Extension Status", colour=Color.blue())
-        embed.add_field(
-            name="Loaded Extensions",
-            value="\n".join(extension_loaded) or "No Extensions",
-        )
-        embed.add_field(
-            name="Not Loaded Extensions",
-            value="\n".join(extension_files - extension_loaded) or "No Extensions",
-        )
-        embed.add_field(
-            name="Missing File Extensions",
-            value="\n".join(extension_loaded - extension_files) or "No Extensions",
+        embed = utils.ExtensionEmbed(
+            extension_files=self.bot.extension_files(),
+            extension_loaded=self.bot.extensions,
+            title="Extensions",
+            color=Color.blue(),
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -44,7 +34,12 @@ class Develop(commands.Cog):
         sync: bool = True,
     ):
         """Reload the Specified or All Extensions."""
-        embed = Embed(title="Reloading...", colour=Color.blue())
+        embed = utils.ExtensionEmbed(
+            extension_files=self.bot.extension_files(),
+            extension_loaded=self.bot.extensions,
+            title="Reloading...",
+            color=Color.blue(),
+        )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
         if extension is None:
@@ -55,68 +50,53 @@ class Develop(commands.Cog):
         elif f"cogs.{extension}" not in self.bot.extension_files():
             await self.bot.load_extension(f"cogs.{extension}")
         else:
-            embed = Embed(
-                title="Error",
-                description=f"Extension 'cogs.{extension}' not found.",
-                colour=Color.red(),
+            raise commands.ExtensionNotFound(extension)
+
+        if not sync:
+            embed = utils.ExtensionEmbed(
+                extension_files=self.bot.extension_files(),
+                extension_loaded=self.bot.extensions,
+                title="Reloaded!",
+                color=Color.green(),
             )
             await interaction.edit_original_response(embed=embed)
             return
 
-        extension_files = set(self.bot.extension_files())
-        extension_loaded = set(self.bot.extensions)
-
-        embed = Embed()
-        embed.add_field(
-            name="Loaded Extensions",
-            value="\n".join(extension_loaded) or "No Extensions",
+        embed = utils.ExtensionEmbed(
+            extension_files=self.bot.extension_files(),
+            extension_loaded=self.bot.extensions,
+            title="Syncing...",
+            color=Color.blue(),
         )
-        embed.add_field(
-            name="Not Loaded Extensions",
-            value="\n".join(extension_files - extension_loaded) or "No Extensions",
-        )
-        embed.add_field(
-            name="Missing File Extensions",
-            value="\n".join(extension_loaded - extension_files) or "No Extensions",
-        )
-
-        if not sync:
-            embed.title = "Reloaded!"
-            embed.color = Color.green()
-            await interaction.edit_original_response(embed=embed)
-            return
-
-        embed.title = "Syncing..."
-        embed.color = Color.blue()
         await interaction.edit_original_response(embed=embed)
         await self.bot.command_sync()
 
-        embed.title = "Reloaded and Synced!"
-        embed.color = Color.green()
+        embed = utils.ExtensionEmbed(
+            extension_files=self.bot.extension_files(),
+            extension_loaded=self.bot.extensions,
+            title="Reloaded and Synced!",
+            color=Color.green(),
+        )
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command()
     @utils.developer_only()
     async def sync(self, interaction: Interaction):
         """Sync All Commands"""
-        embed = Embed(title="Syncing...", colour=Color.blue())
+        embed = utils.ExtensionEmbed(
+            extension_files=self.bot.extension_files(),
+            extension_loaded=self.bot.extensions,
+            title="Syncing...",
+            color=Color.blue(),
+        )
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_sync()
-        extension_files = set(self.bot.extension_files())
-        extension_loaded = set(self.bot.extensions)
 
-        embed = Embed(title="Synced!", colour=Color.green())
-        embed.add_field(
-            name="Loaded Extensions",
-            value="\n".join(extension_loaded) or "No Extensions",
-        )
-        embed.add_field(
-            name="Not Loaded Extensions",
-            value="\n".join(extension_files - extension_loaded) or "No Extensions",
-        )
-        embed.add_field(
-            name="Missing File Extensions",
-            value="\n".join(extension_loaded - extension_files) or "No Extensions",
+        embed = utils.ExtensionEmbed(
+            extension_files=self.bot.extension_files(),
+            extension_loaded=self.bot.extensions,
+            title="Synced!",
+            color=Color.green(),
         )
         await interaction.edit_original_response(embed=embed)
 
