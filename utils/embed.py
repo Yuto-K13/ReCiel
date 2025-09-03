@@ -53,7 +53,7 @@ class ErrorEmbed(Embed):
         description: Optional[Any] = None,
         timestamp: Optional[datetime.datetime] = None,
     ):
-        self.errror = error
+        self.error = error
         self.user = user
         self.command = command
 
