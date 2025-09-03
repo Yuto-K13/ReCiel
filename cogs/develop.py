@@ -15,11 +15,8 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def extensions(self, interaction: Interaction):
         """Show All Extensions"""
-        embed = utils.ExtensionEmbed(
-            extension_files=self.bot.extension_files(),
-            extension_loaded=self.bot.extensions,
-            title="Extensions",
-            color=Color.blue(),
+        embed = utils.ExtensionEmbed.from_client(
+            client=self.bot, title="Extensions", color=Color.blue()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -34,11 +31,8 @@ class Develop(commands.Cog):
         sync: bool = True,
     ):
         """Reload the Specified or All Extensions."""
-        embed = utils.ExtensionEmbed(
-            extension_files=self.bot.extension_files(),
-            extension_loaded=self.bot.extensions,
-            title="Reloading...",
-            color=Color.blue(),
+        embed = utils.ExtensionEmbed.from_client(
+            client=self.bot, title="Reloading...", color=Color.blue()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -53,29 +47,20 @@ class Develop(commands.Cog):
             raise commands.ExtensionNotFound(extension)
 
         if not sync:
-            embed = utils.ExtensionEmbed(
-                extension_files=self.bot.extension_files(),
-                extension_loaded=self.bot.extensions,
-                title="Reloaded!",
-                color=Color.green(),
+            embed = utils.ExtensionEmbed.from_client(
+                client=self.bot, title="Reloaded!", color=Color.green()
             )
             await interaction.edit_original_response(embed=embed)
             return
 
-        embed = utils.ExtensionEmbed(
-            extension_files=self.bot.extension_files(),
-            extension_loaded=self.bot.extensions,
-            title="Syncing...",
-            color=Color.blue(),
+        embed = utils.ExtensionEmbed.from_client(
+            client=self.bot, title="Syncing...", color=Color.blue()
         )
         await interaction.edit_original_response(embed=embed)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed(
-            extension_files=self.bot.extension_files(),
-            extension_loaded=self.bot.extensions,
-            title="Reloaded and Synced!",
-            color=Color.green(),
+        embed = utils.ExtensionEmbed.from_client(
+            client=self.bot, title="Reloaded and Synced!", color=Color.green()
         )
         await interaction.edit_original_response(embed=embed)
 
@@ -83,20 +68,14 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def sync(self, interaction: Interaction):
         """Sync All Commands"""
-        embed = utils.ExtensionEmbed(
-            extension_files=self.bot.extension_files(),
-            extension_loaded=self.bot.extensions,
-            title="Syncing...",
-            color=Color.blue(),
+        embed = utils.ExtensionEmbed.from_client(
+            client=self.bot, title="Syncing...", color=Color.blue()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed(
-            extension_files=self.bot.extension_files(),
-            extension_loaded=self.bot.extensions,
-            title="Synced!",
-            color=Color.green(),
+        embed = utils.ExtensionEmbed.from_client(
+            client=self.bot, title="Synced!", color=Color.green()
         )
         await interaction.edit_original_response(embed=embed)
 

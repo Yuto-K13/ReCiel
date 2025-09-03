@@ -1,12 +1,45 @@
 import datetime
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Self
 
-from discord import Color, Embed, Member, User
+from discord import Color, Embed, Interaction, Member, User
 from discord.app_commands import AppCommand, AppCommandGroup, Command
 from discord.types.embed import EmbedType
 
+from .types import CielType
+
 
 class ErrorEmbed(Embed):
+    @classmethod
+    def from_interaction(
+        cls,
+        error: Exception,
+        interaction: Interaction,
+        colour: Optional[int | Color] = None,
+        color: Optional[int | Color] = None,
+        title: Optional[Any] = None,
+        type: EmbedType = "rich",
+        url: Optional[Any] = None,
+        description: Optional[Any] = None,
+        timestamp: Optional[datetime.datetime] = None,
+    ) -> Self:
+        client: CielType = interaction.client
+        user = interaction.user
+        command = interaction.command
+        command = client.tree.get_app_command(command) or command
+
+        return cls(
+            error=error,
+            user=user,
+            command=command,
+            colour=colour,
+            color=color,
+            title=title,
+            type=type,
+            url=url,
+            description=description,
+            timestamp=timestamp,
+        )
+
     def __init__(
         self,
         error: Exception,
@@ -54,6 +87,30 @@ class ErrorEmbed(Embed):
 
 
 class ExtensionEmbed(Embed):
+    @classmethod
+    def from_client(
+        cls,
+        client: CielType,
+        colour: Optional[int | Color] = None,
+        color: Optional[int | Color] = None,
+        title: Optional[Any] = None,
+        type: EmbedType = "rich",
+        url: Optional[Any] = None,
+        description: Optional[Any] = None,
+        timestamp: Optional[datetime.datetime] = None,
+    ) -> Self:
+        return cls(
+            client.extension_files(),
+            client.extensions,
+            colour=colour,
+            color=color,
+            title=title,
+            type=type,
+            url=url,
+            description=description,
+            timestamp=timestamp,
+        )
+
     def __init__(
         self,
         extension_files: Iterable[str],
