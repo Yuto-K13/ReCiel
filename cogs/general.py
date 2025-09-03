@@ -2,11 +2,11 @@ from discord import Color, Embed, Interaction, app_commands
 from discord.app_commands import Group
 from discord.ext import commands
 
-from ciel import Ciel
+from utils.types import CielType
 
 
 class General(commands.Cog):
-    def __init__(self, bot: Ciel):
+    def __init__(self, bot: CielType):
         self.bot = bot
 
     @app_commands.command()
@@ -47,5 +47,5 @@ class General(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-async def setup(bot: Ciel):
+async def setup(bot: CielType):
     await bot.add_cog(General(bot))

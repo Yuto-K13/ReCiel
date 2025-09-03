@@ -3,11 +3,11 @@ from discord.app_commands import AppCommandError
 from discord.ext import commands
 
 import utils
-from ciel import Ciel
+from utils.types import CielType
 
 
 class Error(commands.Cog):
-    def __init__(self, bot: Ciel):
+    def __init__(self, bot: CielType):
         self.bot = bot
 
     async def on_tree_error(self, interaction: Interaction, error: AppCommandError):
@@ -37,5 +37,5 @@ class Error(commands.Cog):
         raise AppCommandError("Test Error")
 
 
-async def setup(bot: Ciel):
+async def setup(bot: CielType):
     await bot.add_cog(Error(bot))

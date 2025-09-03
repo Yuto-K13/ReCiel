@@ -4,11 +4,11 @@ from discord import Color, Interaction, app_commands
 from discord.ext import commands
 
 import utils
-from ciel import Ciel
+from utils.types import CielType
 
 
 class Develop(commands.Cog):
-    def __init__(self, bot: Ciel):
+    def __init__(self, bot: CielType):
         self.bot = bot
 
     @app_commands.command()
@@ -101,5 +101,5 @@ class Develop(commands.Cog):
         await interaction.edit_original_response(embed=embed)
 
 
-async def setup(bot: Ciel):
+async def setup(bot: CielType):
     await bot.add_cog(Develop(bot))
