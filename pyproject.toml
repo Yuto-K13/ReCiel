@@ -7,5 +7,98 @@ requires-python = ">=3.13"
 dependencies = [
     "discord-py[voice]>=2.6.0",
     "python-dotenv>=1.1.1",
+    "ruff>=0.12.12",
     "typing-extensions>=4.15.0",
+]
+
+[tool.ruff]
+indent-width = 4
+line-length = 119
+target-version = "py313"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = [
+    "ERA",   # eradicate
+    "YTT",   # flake8-2020
+    "ANN",   # flake8-annotations
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "COM",   # flake8-commas
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "LOG",   # flake8-logging
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "T20",   # flake8-print
+    "Q",     # flake8-quotes
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SLF",   # flake8-self
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "TC",    # flake8-type-checking
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "FLY",   # flynt
+    "I",     # isort
+    "C90",   # mccabe
+    "N",     # pep8-naming
+    "PERF",  # Perflint
+    "E",     # Error
+    "W",     # Warning
+    "DOC",   # pydoclint
+    "D",     # pydocstyle
+    "F",     # Pyflakes
+    "PGH",   # pygrep-hooks
+    "PL",    # Pylint
+    "UP",    # pyupgrade
+    "FURB",  # refurb
+    "RUF",   # Ruff-specific rules
+    "TRY",   # tryceratops
+]
+ignore = [
+    # "I": isort
+    "I001", # unsorted-imports
+    # "W": Warning
+    "W291", # trailing-whitespace
+    "W292", # missing-newline-at-end-of-file
+    "W293", # blank-line-with-whitespace
+    # "D": pydocstyle
+    "D100", # undocumented-public-module
+    "D101", # undocumented-public-class
+    "D102", # undocumented-public-method
+    "D103", # undocumented-public-function
+    "D104", # undocumented-public-package
+    "D105", # undocumented-magic-method
+    "D106", # undocumented-public-nested-class
+    "D107", # undocumented-public-init
+    "D400", # missing-trailing-period
+    "D415", # missing-terminal-punctuation
+    # "PLR": Pylint Refactor
+    "PLR0913", # too-many-arguments
+    # "TRY": tryceratops
+    "TRY003", # raise-vanilla-args
+    # --- deprecated rules ---
+    "UP038",
+]
+
+unfixable = [
+    "F401", # unused-import
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "F401", # unused-import
+    "F403", # undefined-local-with-import-star
 ]
