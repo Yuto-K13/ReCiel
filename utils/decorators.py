@@ -3,7 +3,7 @@ from discord.app_commands import CheckFailure
 from discord.ext.commands import Bot
 
 
-def developer_only():
+def developer_only():  # noqa: ANN201
     async def predicate(interaction: Interaction) -> bool:
         client = interaction.client
         if not isinstance(client, Bot):

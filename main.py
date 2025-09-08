@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from pathlib import Path
 
 import dotenv
 from discord import Intents
@@ -7,7 +8,7 @@ from discord import Intents
 from ciel import Ciel
 
 if __name__ == "__main__":
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(Path(__file__).parent)
     dotenv.load_dotenv()
 
     parser = ArgumentParser(description="Generic Discord Bot built with discord.py.")

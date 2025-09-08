@@ -7,10 +7,10 @@ from utils.types import CielType
 
 
 class Error(commands.Cog):
-    def __init__(self, bot: CielType):
+    def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
-    async def on_tree_error(self, interaction: Interaction, error: AppCommandError):
+    async def on_tree_error(self, interaction: Interaction, error: AppCommandError) -> None:
         embed = utils.ErrorEmbed.from_interaction(error=error, interaction=interaction)
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -18,21 +18,21 @@ class Error(commands.Cog):
             return
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
         self._prev_on_error = self.bot.tree.on_error
         self.bot.tree.on_error = self.on_tree_error
 
-    async def cog_unload(self):
+    async def cog_unload(self) -> None:
         self.bot.tree.on_error = self._prev_on_error
 
     @app_commands.command(name="raise")
     @utils.developer_only()
-    async def raise_error(self, interaction: Interaction):
+    async def raise_error(self, interaction: Interaction) -> None:
         """Raise a test error."""
         embed = Embed(title="Raising AppCommandError", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         raise AppCommandError("Test Error")
 
 
-async def setup(bot: CielType):
+async def setup(bot: CielType) -> None:
     await bot.add_cog(Error(bot))
