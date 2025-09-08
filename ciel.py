@@ -1,11 +1,12 @@
 import inspect
 import os
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from discord import DiscordException, Intents, Interaction, Message, app_commands
 from discord.abc import Snowflake
 from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
+from discord.enums import AppCommandType
 from discord.ext import commands
 
 import utils
@@ -21,8 +22,7 @@ class CielTree(app_commands.CommandTree):
     async def sync(self, *, guild: Snowflake | None = None) -> list[AppCommand]:
         utils.logger.debug(f"Syncing Commands (Guild: {guild})")
         app_cmds = await super().sync(guild=guild)
-        cmds = self.get_commands(guild=guild)
-        self._map_commands(cmds, app_cmds)
+        await self.map_commands(guild=guild)
         return app_cmds
 
     async def sync_all(self) -> dict[int | None, list[AppCommand]]:
@@ -36,25 +36,32 @@ class CielTree(app_commands.CommandTree):
                 app_cmds_map[guild_id] = await self.sync(guild=guild)
         return app_cmds_map
 
-    def _map_commands(self, commands: list[Command | Group], app_commands: list[AppCommand | AppCommandGroup]) -> None:
-        for command in commands:
-            for app_command in app_commands:
-                if isinstance(app_command, Argument):
+    def _mapping(
+        self,
+        cmds: Iterable[Command | Group],
+        app_cmds: Iterable[AppCommand | AppCommandGroup | Argument],
+    ) -> None:
+        for cmd in cmds:
+            for app_cmd in app_cmds:
+                if isinstance(app_cmd, Argument):
                     continue
-                if command.name == app_command.name:
+                if app_cmd.type != AppCommandType.chat_input:
+                    continue
+                if cmd.name == app_cmd.name:
                     break
             else:
                 continue
-            if isinstance(command, Group):
-                self._map_commands(command.commands, app_command.options)
+            if isinstance(cmd, Group):
+                self._mapping(cmd.commands, app_cmd.options)
                 continue
 
-            self._command_map[command] = app_command
+            self._command_map[cmd] = app_cmd
 
     async def map_commands(self, guild: Snowflake | None = None) -> None:
-        commands = self.get_commands(guild=guild)
-        app_commands = await self.fetch_commands(guild=guild)
-        self._map_commands(commands, app_commands)
+        utils.logger.debug(f"Mapping Commands (Guild: {guild})")
+        cmds = self.get_commands(guild=guild, type=AppCommandType.chat_input)
+        app_cmds = await self.fetch_commands(guild=guild)
+        self._mapping(cmds, app_cmds)
 
     async def map_all_commands(self) -> None:
         await self.map_commands(guild=None)
@@ -136,6 +143,12 @@ class Ciel(commands.Bot):
     async def unload_all_extensions(self) -> None:
         for name in tuple(self.extensions):
             await self.unload_extension(name)
+
+    async def command_map(self) -> None:
+        if self.debug and self.debug_guild:
+            self.tree.copy_global_to(guild=self.debug_guild)
+            self.tree.clear_commands(guild=None)
+        await self.tree.map_all_commands()
 
     async def command_sync(self) -> None:
         if self.debug and self.debug_guild:
