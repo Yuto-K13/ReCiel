@@ -1,9 +1,10 @@
 import datetime
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any, Self
 
 from discord import Color, Embed, Interaction, Member, User
-from discord.app_commands import AppCommand, AppCommandGroup, Command, ContextMenu
+from discord.app_commands import AppCommand, AppCommandGroup, Command, ContextMenu, Group
+from discord.ext.commands import Cog
 from discord.types.embed import EmbedType
 
 from .types import CielType
@@ -145,3 +146,73 @@ class ExtensionEmbed(Embed):
         self.add_field(name="Loaded Extensions", value="\n".join(self.loaded) or "No Extensions")
         self.add_field(name="Not Loaded Extensions", value="\n".join(self.not_loaded) or "No Extensions")
         self.add_field(name="Missing File Extensions", value="\n".join(self.missing_file) or "No Extensions")
+
+
+class CommandMapEmbed(Embed):
+    @classmethod
+    def from_client(
+        cls,
+        client: CielType,
+        colour: int | Color | None = None,
+        color: int | Color | None = None,
+        title: Any | None = None,  # noqa: ANN401
+        type: EmbedType = "rich",  # noqa: A002
+        url: Any | None = None,  # noqa: ANN401
+        description: Any | None = None,  # noqa: ANN401
+        timestamp: datetime.datetime | None = None,
+    ) -> Self:
+        return cls(
+            client.tree.command_map,
+            [c for cog_name in client.cogs if (c := client.get_cog(cog_name))],
+            colour=colour,
+            color=color,
+            title=title,
+            type=type,
+            url=url,
+            description=description,
+            timestamp=timestamp,
+        )
+
+    def __init__(
+        self,
+        command_map: Mapping[Command, AppCommand | AppCommandGroup],
+        cogs: Iterable[Cog],
+        colour: int | Color | None = None,
+        color: int | Color | None = None,
+        title: Any | None = None,  # noqa: ANN401
+        type: EmbedType = "rich",  # noqa: A002
+        url: Any | None = None,  # noqa: ANN401
+        description: Any | None = None,  # noqa: ANN401
+        timestamp: datetime.datetime | None = None,
+    ) -> None:
+        self.command_map = command_map
+        self.unmapped = set(command_map.values())
+        super().__init__(
+            title=title,
+            colour=colour,
+            color=color,
+            type=type,
+            url=url,
+            description=description,
+            timestamp=timestamp,
+        )
+        for cog in cogs:
+            lines = []
+            cmds = cog.get_app_commands()
+            while cmds:
+                cmd = cmds.pop(0)
+                if isinstance(cmd, Group):
+                    cmds = cmd.commands + cmds
+                    continue
+
+                app_cmd = command_map.get(cmd)
+                if app_cmd:
+                    lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention}")
+                    self.unmapped.discard(app_cmd)
+                else:
+                    lines.append(f"`{cmd.qualified_name}` -> None")
+            self.add_field(name=cog.qualified_name, value="\n".join(lines) or "No Commands")
+        self.add_field(
+            name="Unmapped Commands",
+            value="\n".join([cmd.mention for cmd in self.unmapped]) or "No Commands",
+        )

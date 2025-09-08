@@ -1,7 +1,8 @@
 import inspect
 import os
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
+from types import MappingProxyType
 
 from discord import DiscordException, Intents, Interaction, Message, app_commands
 from discord.abc import Snowflake
@@ -26,7 +27,7 @@ class CielTree(app_commands.CommandTree):
         return app_cmds
 
     async def sync_all(self) -> dict[int | None, list[AppCommand]]:
-        self._command_map.clear()
+        self.clear_command_map()
         app_cmds_map = {}
         if self.get_commands(guild=None):
             app_cmds_map[None] = await self.sync(guild=None)
@@ -35,6 +36,10 @@ class CielTree(app_commands.CommandTree):
             if self.get_commands(guild=guild):
                 app_cmds_map[guild_id] = await self.sync(guild=guild)
         return app_cmds_map
+
+    @property
+    def command_map(self) -> Mapping[Command, AppCommand | AppCommandGroup]:
+        return MappingProxyType(self._command_map)
 
     def _mapping(
         self,
@@ -64,10 +69,15 @@ class CielTree(app_commands.CommandTree):
         self._mapping(cmds, app_cmds)
 
     async def map_all_commands(self) -> None:
+        self.clear_command_map()
         await self.map_commands(guild=None)
         for guild_id in self._guild_commands:
             guild = await self.client.fetch_guild(guild_id)
             await self.map_commands(guild=guild)
+
+    def clear_command_map(self) -> None:
+        utils.logger.debug("Clearing Command Map")
+        self._command_map.clear()
 
     def get_app_command(self, command: Command) -> AppCommand | AppCommandGroup | None:
         return self._command_map.get(command)
