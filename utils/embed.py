@@ -1,5 +1,6 @@
 import datetime
-from typing import Any, Iterable, Optional, Self
+from collections.abc import Iterable
+from typing import Any, Self
 
 from discord import Color, Embed, Interaction, Member, User
 from discord.app_commands import AppCommand, AppCommandGroup, Command
@@ -14,15 +15,15 @@ class ErrorEmbed(Embed):
         cls,
         error: Exception,
         interaction: Interaction,
-        colour: Optional[int | Color] = None,
-        color: Optional[int | Color] = None,
-        title: Optional[Any] = None,
-        type: EmbedType = "rich",
-        url: Optional[Any] = None,
-        description: Optional[Any] = None,
-        timestamp: Optional[datetime.datetime] = None,
+        colour: int | Color | None = None,
+        color: int | Color | None = None,
+        title: Any | None = None,  # noqa: ANN401
+        type: EmbedType = "rich",  # noqa: A002
+        url: Any | None = None,  # noqa: ANN401
+        description: Any | None = None,  # noqa: ANN401
+        timestamp: datetime.datetime | None = None,
     ) -> Self:
-        client: CielType = interaction.client
+        client: CielType = interaction.client  # pyright: ignore[reportAssignmentType]
         user = interaction.user
         command = interaction.command
         command = client.tree.get_app_command(command) or command
@@ -43,16 +44,16 @@ class ErrorEmbed(Embed):
     def __init__(
         self,
         error: Exception,
-        user: Optional[User | Member] = None,
-        command: Optional[Command | AppCommand | AppCommandGroup] = None,
-        colour: Optional[int | Color] = None,
-        color: Optional[int | Color] = None,
-        title: Optional[Any] = None,
-        type: EmbedType = "rich",
-        url: Optional[Any] = None,
-        description: Optional[Any] = None,
-        timestamp: Optional[datetime.datetime] = None,
-    ):
+        user: User | Member | None = None,
+        command: Command | AppCommand | AppCommandGroup | None = None,
+        colour: int | Color | None = None,
+        color: int | Color | None = None,
+        title: Any | None = None,  # noqa: ANN401
+        type: EmbedType = "rich",  # noqa: A002
+        url: Any | None = None,  # noqa: ANN401
+        description: Any | None = None,  # noqa: ANN401
+        timestamp: datetime.datetime | None = None,
+    ) -> None:
         self.error = error
         self.user = user
         self.command = command
@@ -61,7 +62,7 @@ class ErrorEmbed(Embed):
             if error.__class__.__module__ in (None, object.__module__):
                 title = error.__class__.__name__
             else:
-                title = ".".join((error.__class__.__module__, error.__class__.__name__))
+                title = f"{error.__class__.__module__}.{error.__class__.__name__}"
         if description is None:
             description = f"{error}"
         if colour is None:
@@ -91,13 +92,13 @@ class ExtensionEmbed(Embed):
     def from_client(
         cls,
         client: CielType,
-        colour: Optional[int | Color] = None,
-        color: Optional[int | Color] = None,
-        title: Optional[Any] = None,
-        type: EmbedType = "rich",
-        url: Optional[Any] = None,
-        description: Optional[Any] = None,
-        timestamp: Optional[datetime.datetime] = None,
+        colour: int | Color | None = None,
+        color: int | Color | None = None,
+        title: Any | None = None,  # noqa: ANN401
+        type: EmbedType = "rich",  # noqa: A002
+        url: Any | None = None,  # noqa: ANN401
+        description: Any | None = None,  # noqa: ANN401
+        timestamp: datetime.datetime | None = None,
     ) -> Self:
         return cls(
             client.extension_files(),
@@ -115,14 +116,14 @@ class ExtensionEmbed(Embed):
         self,
         extension_files: Iterable[str],
         extension_loaded: Iterable[str],
-        colour: Optional[int | Color] = None,
-        color: Optional[int | Color] = None,
-        title: Optional[Any] = None,
-        type: EmbedType = "rich",
-        url: Optional[Any] = None,
-        description: Optional[Any] = None,
-        timestamp: Optional[datetime.datetime] = None,
-    ):
+        colour: int | Color | None = None,
+        color: int | Color | None = None,
+        title: Any | None = None,  # noqa: ANN401
+        type: EmbedType = "rich",  # noqa: A002
+        url: Any | None = None,  # noqa: ANN401
+        description: Any | None = None,  # noqa: ANN401
+        timestamp: datetime.datetime | None = None,
+    ) -> None:
         extension_files = set(extension_files)
         extension_loaded = set(extension_loaded)
         self.loaded = sorted(extension_loaded)
@@ -138,16 +139,6 @@ class ExtensionEmbed(Embed):
             description=description,
             timestamp=timestamp,
         )
-
-        self.add_field(
-            name="Loaded Extensions",
-            value="\n".join(self.loaded) or "No Extensions",
-        )
-        self.add_field(
-            name="Not Loaded Extensions",
-            value="\n".join(self.not_loaded) or "No Extensions",
-        )
-        self.add_field(
-            name="Missing File Extensions",
-            value="\n".join(self.missing_file) or "No Extensions",
-        )
+        self.add_field(name="Loaded Extensions", value="\n".join(self.loaded) or "No Extensions")
+        self.add_field(name="Not Loaded Extensions", value="\n".join(self.not_loaded) or "No Extensions")
+        self.add_field(name="Missing File Extensions", value="\n".join(self.missing_file) or "No Extensions")

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ciel import Ciel
 
-CielType: TypeAlias = "Ciel"
+type CielType = "Ciel"

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from discord import Color, Interaction, app_commands
 from discord.ext import commands
 
@@ -8,32 +6,23 @@ from utils.types import CielType
 
 
 class Develop(commands.Cog):
-    def __init__(self, bot: CielType):
+    def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
     @app_commands.command()
     @utils.developer_only()
-    async def extensions(self, interaction: Interaction):
+    async def extensions(self, interaction: Interaction) -> None:
         """Show All Extensions"""
-        embed = utils.ExtensionEmbed.from_client(
-            client=self.bot, title="Extensions", color=Color.blue()
-        )
+        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Extensions", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
     @app_commands.describe(extension="Extension name to Reload.")
     @app_commands.describe(sync="Sync Commands after Reloading Extensions.")
     @utils.developer_only()
-    async def reload(
-        self,
-        interaction: Interaction,
-        extension: Optional[str] = None,
-        sync: bool = True,
-    ):
+    async def reload(self, interaction: Interaction, extension: str | None = None, sync: bool = True) -> None:
         """Reload the Specified or All Extensions."""
-        embed = utils.ExtensionEmbed.from_client(
-            client=self.bot, title="Reloading...", color=Color.blue()
-        )
+        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloading...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
         if extension is None:
@@ -47,38 +36,28 @@ class Develop(commands.Cog):
             raise commands.ExtensionNotFound(extension)
 
         if not sync:
-            embed = utils.ExtensionEmbed.from_client(
-                client=self.bot, title="Reloaded!", color=Color.green()
-            )
+            embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloaded!", color=Color.green())
             await interaction.edit_original_response(embed=embed)
             return
 
-        embed = utils.ExtensionEmbed.from_client(
-            client=self.bot, title="Syncing...", color=Color.blue()
-        )
+        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.edit_original_response(embed=embed)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed.from_client(
-            client=self.bot, title="Reloaded and Synced!", color=Color.green()
-        )
+        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloaded and Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command()
     @utils.developer_only()
-    async def sync(self, interaction: Interaction):
+    async def sync(self, interaction: Interaction) -> None:
         """Sync All Commands"""
-        embed = utils.ExtensionEmbed.from_client(
-            client=self.bot, title="Syncing...", color=Color.blue()
-        )
+        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed.from_client(
-            client=self.bot, title="Synced!", color=Color.green()
-        )
+        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
 
-async def setup(bot: CielType):
+async def setup(bot: CielType) -> None:
     await bot.add_cog(Develop(bot))
