@@ -50,7 +50,7 @@ class CielTree(app_commands.CommandTree):
             for app_cmd in app_cmds:
                 if isinstance(app_cmd, Argument):
                     continue
-                if app_cmd.type != AppCommandType.chat_input:
+                if app_cmd.type in (AppCommandType.user, AppCommandType.message):
                     continue
                 if cmd.name == app_cmd.name:
                     break
