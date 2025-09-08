@@ -1,4 +1,5 @@
 from discord import Color, Interaction, app_commands
+from discord.app_commands import Group
 from discord.ext import commands
 
 import utils
@@ -12,7 +13,7 @@ class Develop(commands.Cog):
     @app_commands.command()
     @utils.developer_only()
     async def extensions(self, interaction: Interaction) -> None:
-        """Show All Extensions"""
+        """Show All Extensions."""
         embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Extensions", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -36,6 +37,7 @@ class Develop(commands.Cog):
             raise commands.ExtensionNotFound(extension)
 
         if not sync:
+            await self.bot.command_map()
             embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloaded!", color=Color.green())
             await interaction.edit_original_response(embed=embed)
             return
@@ -47,16 +49,36 @@ class Develop(commands.Cog):
         embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloaded and Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    @app_commands.command()
+    command = Group(name="command", description="Command Management")
+
+    @command.command()
     @utils.developer_only()
     async def sync(self, interaction: Interaction) -> None:
-        """Sync All Commands"""
+        """Sync All Commands."""
         embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_sync()
 
         embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
+
+    @command.command()
+    @utils.developer_only()
+    async def register(self, interaction: Interaction) -> None:
+        """Register All Commands for Command Map."""
+        embed = utils.CommandMapEmbed.from_client(client=self.bot, title="Registering...", color=Color.blue())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await self.bot.command_map()
+
+        embed = utils.CommandMapEmbed.from_client(client=self.bot, title="Registered!", color=Color.green())
+        await interaction.edit_original_response(embed=embed)
+
+    @command.command()
+    @utils.developer_only()
+    async def map(self, interaction: Interaction) -> None:
+        """Show Command Map."""
+        embed = utils.CommandMapEmbed.from_client(client=self.bot, title="Command Map", color=Color.blue())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: CielType) -> None:
