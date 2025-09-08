@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from typing import Any, Self
 
 from discord import Color, Embed, Interaction, Member, User
-from discord.app_commands import AppCommand, AppCommandGroup, Command
+from discord.app_commands import AppCommand, AppCommandGroup, Command, ContextMenu
 from discord.types.embed import EmbedType
 
 from .types import CielType
@@ -26,7 +26,8 @@ class ErrorEmbed(Embed):
         client: CielType = interaction.client  # pyright: ignore[reportAssignmentType]
         user = interaction.user
         command = interaction.command
-        command = client.tree.get_app_command(command) or command
+        if isinstance(command, (Command)):
+            command = client.tree.get_app_command(command) or command
 
         return cls(
             error=error,
@@ -45,7 +46,7 @@ class ErrorEmbed(Embed):
         self,
         error: Exception,
         user: User | Member | None = None,
-        command: Command | AppCommand | AppCommandGroup | None = None,
+        command: Command | ContextMenu | AppCommand | AppCommandGroup | None = None,
         colour: int | Color | None = None,
         color: int | Color | None = None,
         title: Any | None = None,  # noqa: ANN401
@@ -80,9 +81,11 @@ class ErrorEmbed(Embed):
 
         if command:
             if isinstance(command, (AppCommand, AppCommandGroup)):
-                self.add_field(name="App Command", value=command.mention)
-            else:
+                self.add_field(name="Command", value=command.mention)
+            elif isinstance(command, Command):
                 self.add_field(name="Command", value=f"/{command.qualified_name}")
+            else:
+                self.add_field(name="Command", value=command.name)
         if user:
             self.add_field(name="User", value=user.mention)
 
