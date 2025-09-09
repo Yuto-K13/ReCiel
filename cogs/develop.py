@@ -14,7 +14,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def extensions(self, interaction: Interaction) -> None:
         """Show All Extensions."""
-        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Extensions", color=Color.blue())
+        embed = utils.ExtensionEmbed(client=self.bot, title="Extensions", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
@@ -23,7 +23,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def reload(self, interaction: Interaction, extension: str | None = None, sync: bool = True) -> None:
         """Reload the Specified or All Extensions."""
-        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloading...", color=Color.blue())
+        embed = utils.ExtensionEmbed(client=self.bot, title="Reloading...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
         if extension is None:
@@ -38,15 +38,15 @@ class Develop(commands.Cog):
 
         if not sync:
             await self.bot.command_map()
-            embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloaded!", color=Color.green())
+            embed = utils.ExtensionEmbed(client=self.bot, title="Reloaded!", color=Color.green())
             await interaction.edit_original_response(embed=embed)
             return
 
-        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Syncing...", color=Color.blue())
+        embed = utils.ExtensionEmbed(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.edit_original_response(embed=embed)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Reloaded and Synced!", color=Color.green())
+        embed = utils.ExtensionEmbed(client=self.bot, title="Reloaded and Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
     command = Group(name="command", description="Command Management")
@@ -55,29 +55,29 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def sync(self, interaction: Interaction) -> None:
         """Sync All Commands."""
-        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Syncing...", color=Color.blue())
+        embed = utils.CommandMapEmbed(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed.from_client(client=self.bot, title="Synced!", color=Color.green())
+        embed = utils.CommandMapEmbed(client=self.bot, title="Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
     @command.command()
     @utils.developer_only()
     async def register(self, interaction: Interaction) -> None:
         """Register All Commands for Command Map."""
-        embed = utils.CommandMapEmbed.from_client(client=self.bot, title="Registering...", color=Color.blue())
+        embed = utils.CommandMapEmbed(client=self.bot, title="Registering...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_map()
 
-        embed = utils.CommandMapEmbed.from_client(client=self.bot, title="Registered!", color=Color.green())
+        embed = utils.CommandMapEmbed(client=self.bot, title="Registered!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
     @command.command()
     @utils.developer_only()
     async def map(self, interaction: Interaction) -> None:
         """Show Command Map."""
-        embed = utils.CommandMapEmbed.from_client(client=self.bot, title="Command Map", color=Color.blue())
+        embed = utils.CommandMapEmbed(client=self.bot, title="Command Map", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

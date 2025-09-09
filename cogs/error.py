@@ -11,7 +11,7 @@ class Error(commands.Cog):
         self.bot = bot
 
     async def on_tree_error(self, interaction: Interaction, error: AppCommandError) -> None:
-        embed = utils.ErrorEmbed.from_interaction(error=error, interaction=interaction)
+        embed = utils.ErrorEmbed.from_interaction(client=self.bot, error=error, interaction=interaction)
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True)
             await interaction.delete_original_response()

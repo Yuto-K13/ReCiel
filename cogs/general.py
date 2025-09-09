@@ -1,7 +1,7 @@
 from discord import Color, Embed, Interaction, app_commands
-from discord.app_commands import Group
 from discord.ext import commands
 
+import utils
 from utils.types import CielType
 
 
@@ -25,24 +25,20 @@ class General(commands.Cog):
             cog = self.bot.get_cog(cog_name)
             if cog is None:
                 continue
-            descs = []
-            commands = cog.get_app_commands()
-            while commands:
-                command = commands.pop()
-                if isinstance(command, Group):
-                    commands.extend(command.commands)
+            lines = []
+            for cmd in utils.expand_commands(cog.get_app_commands()):
+                if not await utils.check_can_run(cmd, interaction):
                     continue
-                if not await self.bot.tree.check_can_run(command, interaction):
-                    continue
-                app_command = self.bot.tree.get_app_command(command)
+                app_command = self.bot.tree.get_app_command(cmd)
                 if app_command is None:
                     continue
 
-                descs.append(app_command.mention)
-                descs.append(f"> {command.description}")
-                descs.extend([f"> ・ {param.name}: {param.description}" for param in command.parameters])
-            if descs:
-                embed.add_field(name=cog_name, value="\n".join(descs))
+                lines.append(app_command.mention)
+                lines.append(f"> {cmd.description}")
+                lines.extend([f"> ・ {param.name}: {param.description}" for param in cmd.parameters])
+            if lines:
+                embed.add_field(name=cog_name, value="\n".join(lines))
+
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
