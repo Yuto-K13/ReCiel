@@ -7,8 +7,8 @@ from discord import utils
 logger = logging.getLogger("discord.ciel")
 
 
-def setup_logging(debug: bool = False) -> None:
-    level = logging.DEBUG if debug else logging.INFO
+def setup_logging(develop: bool = False) -> None:
+    level = logging.DEBUG if develop else logging.INFO
     log_folder = os.getenv("LOG_FOLDER")
     if log_folder and Path(log_folder).is_dir():
         log_path = Path(log_folder) / "discord.log"
