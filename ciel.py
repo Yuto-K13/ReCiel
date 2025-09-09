@@ -11,7 +11,7 @@ from discord.ext import commands
 
 import utils
 
-IGNORE_EXTENSION_FILES = ["__init__"]
+IGNORE_EXTENSION_FILES = []
 
 
 class CielTree(app_commands.CommandTree):
@@ -138,14 +138,17 @@ class Ciel(commands.Bot):
 
     def extension_files(self) -> Generator[str]:
         cogs_path = Path("./cogs")
-        for file_path in cogs_path.iterdir():
-            if not file_path.is_file():
+        for entry in cogs_path.iterdir():
+            name = entry.name
+            if entry.is_file():
+                name, ext = entry.stem, entry.suffix
+                if ext.lower() != ".py":
+                    continue
+            if name.startswith("__") and name.endswith("__"):
                 continue
-            name, ext = file_path.stem, file_path.suffix
             if name in IGNORE_EXTENSION_FILES:
                 continue
-            if ext.lower() == ".py":
-                yield f"cogs.{name}"
+            yield f"cogs.{name}"
 
     async def load_all_extensions(self) -> None:
         for name in self.extension_files():
