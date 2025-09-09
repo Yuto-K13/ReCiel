@@ -1,5 +1,5 @@
 import os
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Generator, Iterable, Mapping
 from pathlib import Path
 from types import MappingProxyType
 
@@ -123,7 +123,7 @@ class Ciel(commands.Bot):
         except DiscordException:
             utils.logger.exception(f"Error while Reloading Extension: {name}")
 
-    def extension_files(self) -> Iterator[str]:
+    def extension_files(self) -> Generator[str]:
         cogs_path = Path("./cogs")
         for file_path in cogs_path.iterdir():
             if not file_path.is_file():
