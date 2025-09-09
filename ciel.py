@@ -155,16 +155,19 @@ class Ciel(commands.Bot):
         for name in tuple(self.extensions):
             await self.unload_extension(name)
 
-    async def command_map(self) -> None:
+    def copy_develop_command(self) -> bool:
         if self.develop and self.develop_guild:
             self.tree.copy_global_to(guild=self.develop_guild)
             self.tree.clear_commands(guild=None)
+            return True
+        return False
+
+    async def command_map(self) -> None:
+        self.copy_develop_command()
         await self.tree.map_all_commands()
 
     async def command_sync(self) -> None:
-        if self.develop and self.develop_guild:
-            self.tree.copy_global_to(guild=self.develop_guild)
-            self.tree.clear_commands(guild=None)
+        if self.copy_develop_command():
             await self.tree.sync(guild=self.develop_guild)
             return
         await self.tree.sync_all()
@@ -179,6 +182,7 @@ class Ciel(commands.Bot):
                 utils.logger.exception(f"Couldn't Fetch Guild (ID: {develop_guild_id})")
                 raise
         if self.sync:  # Develop Mode でも Global Command ごと Sync する
+            self.copy_develop_command()
             await self.tree.sync_all()
             return
 
