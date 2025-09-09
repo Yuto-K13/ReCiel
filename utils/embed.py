@@ -1,11 +1,11 @@
 import datetime
-from collections.abc import Iterable, Mapping
 from typing import Any, Self
 
 from discord import Color, Embed, Interaction, Member, User
-from discord.app_commands import AppCommand, AppCommandGroup, Command, ContextMenu, Group
-from discord.ext.commands import Cog
+from discord.app_commands import Command, ContextMenu
 from discord.types.embed import EmbedType
+
+import utils
 
 from .types import CielType
 
@@ -14,8 +14,10 @@ class ErrorEmbed(Embed):
     @classmethod
     def from_interaction(
         cls,
+        client: CielType,
         error: Exception,
         interaction: Interaction,
+        *,
         colour: int | Color | None = None,
         color: int | Color | None = None,
         title: Any | None = None,  # noqa: ANN401
@@ -24,13 +26,11 @@ class ErrorEmbed(Embed):
         description: Any | None = None,  # noqa: ANN401
         timestamp: datetime.datetime | None = None,
     ) -> Self:
-        client: CielType = interaction.client  # pyright: ignore[reportAssignmentType]
         user = interaction.user
         command = interaction.command
-        if isinstance(command, (Command)):
-            command = client.tree.get_app_command(command) or command
 
         return cls(
+            client=client,
             error=error,
             user=user,
             command=command,
@@ -45,9 +45,11 @@ class ErrorEmbed(Embed):
 
     def __init__(
         self,
+        client: CielType,
         error: Exception,
         user: User | Member | None = None,
-        command: Command | ContextMenu | AppCommand | AppCommandGroup | None = None,
+        command: Command | ContextMenu | None = None,
+        *,
         colour: int | Color | None = None,
         color: int | Color | None = None,
         title: Any | None = None,  # noqa: ANN401
@@ -56,20 +58,10 @@ class ErrorEmbed(Embed):
         description: Any | None = None,  # noqa: ANN401
         timestamp: datetime.datetime | None = None,
     ) -> None:
+        self.client = client
         self.error = error
         self.user = user
         self.command = command
-
-        if title is None:
-            if error.__class__.__module__ in (None, object.__module__):
-                title = error.__class__.__name__
-            else:
-                title = f"{error.__class__.__module__}.{error.__class__.__name__}"
-        if description is None:
-            description = f"{error}"
-        if colour is None:
-            colour = Color.red()
-
         super().__init__(
             title=title,
             colour=colour,
@@ -79,47 +71,35 @@ class ErrorEmbed(Embed):
             description=description,
             timestamp=timestamp,
         )
+        self.format()
 
-        if command:
-            if isinstance(command, (AppCommand, AppCommandGroup)):
-                self.add_field(name="Command", value=command.mention)
-            elif isinstance(command, Command):
-                self.add_field(name="Command", value=f"/{command.qualified_name}")
+    def format(self) -> None:
+        if self.title is None:
+            if self.error.__class__.__module__ in (None, object.__module__):
+                self.title = self.error.__class__.__name__
             else:
-                self.add_field(name="Command", value=command.name)
-        if user:
-            self.add_field(name="User", value=user.mention)
+                self.title = f"{self.error.__class__.__module__}.{self.error.__class__.__name__}"
+        if self.description is None:
+            self.description = str(self.error)
+        if self.color is None:
+            self.color = Color.red()
+
+        if isinstance(self.command, Command):
+            if app_cmd := self.client.tree.get_app_command(self.command):
+                self.add_field(name="Command", value=app_cmd.mention)
+            else:
+                self.add_field(name="Command", value=f"/{self.command.qualified_name}")
+        elif isinstance(self.command, ContextMenu):
+            self.add_field(name="Command", value=self.command.name)
+        if self.user:
+            self.add_field(name="User", value=self.user.mention)
 
 
 class ExtensionEmbed(Embed):
-    @classmethod
-    def from_client(
-        cls,
-        client: CielType,
-        colour: int | Color | None = None,
-        color: int | Color | None = None,
-        title: Any | None = None,  # noqa: ANN401
-        type: EmbedType = "rich",  # noqa: A002
-        url: Any | None = None,  # noqa: ANN401
-        description: Any | None = None,  # noqa: ANN401
-        timestamp: datetime.datetime | None = None,
-    ) -> Self:
-        return cls(
-            client.extension_files(),
-            client.extensions,
-            colour=colour,
-            color=color,
-            title=title,
-            type=type,
-            url=url,
-            description=description,
-            timestamp=timestamp,
-        )
-
     def __init__(
         self,
-        extension_files: Iterable[str],
-        extension_loaded: Iterable[str],
+        client: CielType,
+        *,
         colour: int | Color | None = None,
         color: int | Color | None = None,
         title: Any | None = None,  # noqa: ANN401
@@ -128,55 +108,35 @@ class ExtensionEmbed(Embed):
         description: Any | None = None,  # noqa: ANN401
         timestamp: datetime.datetime | None = None,
     ) -> None:
-        extension_files = set(extension_files)
-        extension_loaded = set(extension_loaded)
+        self.client = client
+        super().__init__(
+            title=title,
+            colour=colour,
+            color=color,
+            type=type,
+            url=url,
+            description=description,
+            timestamp=timestamp,
+        )
+        self.format()
+
+    def format(self) -> None:
+        extension_files = set(self.client.extension_files())
+        extension_loaded = set(self.client.extensions)
         self.loaded = sorted(extension_loaded)
         self.not_loaded = sorted(extension_files - extension_loaded)
         self.missing_file = sorted(extension_loaded - extension_files)
 
-        super().__init__(
-            title=title,
-            colour=colour,
-            color=color,
-            type=type,
-            url=url,
-            description=description,
-            timestamp=timestamp,
-        )
         self.add_field(name="Loaded Extensions", value="\n".join(self.loaded) or "No Extensions")
         self.add_field(name="Not Loaded Extensions", value="\n".join(self.not_loaded) or "No Extensions")
         self.add_field(name="Missing File Extensions", value="\n".join(self.missing_file) or "No Extensions")
 
 
 class CommandMapEmbed(Embed):
-    @classmethod
-    def from_client(
-        cls,
-        client: CielType,
-        colour: int | Color | None = None,
-        color: int | Color | None = None,
-        title: Any | None = None,  # noqa: ANN401
-        type: EmbedType = "rich",  # noqa: A002
-        url: Any | None = None,  # noqa: ANN401
-        description: Any | None = None,  # noqa: ANN401
-        timestamp: datetime.datetime | None = None,
-    ) -> Self:
-        return cls(
-            client.tree.command_map,
-            [c for cog_name in client.cogs if (c := client.get_cog(cog_name))],
-            colour=colour,
-            color=color,
-            title=title,
-            type=type,
-            url=url,
-            description=description,
-            timestamp=timestamp,
-        )
-
     def __init__(
         self,
-        command_map: Mapping[Command, AppCommand | AppCommandGroup],
-        cogs: Iterable[Cog],
+        client: CielType,
+        *,
         colour: int | Color | None = None,
         color: int | Color | None = None,
         title: Any | None = None,  # noqa: ANN401
@@ -185,8 +145,7 @@ class CommandMapEmbed(Embed):
         description: Any | None = None,  # noqa: ANN401
         timestamp: datetime.datetime | None = None,
     ) -> None:
-        self.command_map = command_map
-        self.unmapped = set(command_map.values())
+        self.client = client
         super().__init__(
             title=title,
             colour=colour,
@@ -196,22 +155,24 @@ class CommandMapEmbed(Embed):
             description=description,
             timestamp=timestamp,
         )
-        for cog in cogs:
-            lines = []
-            cmds = cog.get_app_commands()
-            while cmds:
-                cmd = cmds.pop(0)
-                if isinstance(cmd, Group):
-                    cmds = cmd.commands + cmds
-                    continue
+        self.format()
 
-                app_cmd = command_map.get(cmd)
+    def format(self) -> None:
+        self.unmapped = set(self.client.tree.command_map.values())
+        for cog_name in self.client.cogs:
+            cog = self.client.get_cog(cog_name)
+            if cog is None:
+                continue
+            lines = []
+            for cmd in utils.expand_commands(cog.get_app_commands()):
+                app_cmd = self.client.tree.command_map.get(cmd)
                 if app_cmd:
                     lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention}")
                     self.unmapped.discard(app_cmd)
                 else:
                     lines.append(f"`{cmd.qualified_name}` -> None")
             self.add_field(name=cog.qualified_name, value="\n".join(lines) or "No Commands")
+
         self.add_field(
             name="Unmapped Commands",
             value="\n".join([cmd.mention for cmd in self.unmapped]) or "No Commands",

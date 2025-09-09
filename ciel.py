@@ -1,10 +1,9 @@
-import inspect
 import os
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from types import MappingProxyType
 
-from discord import DiscordException, Intents, Interaction, Message, app_commands
+from discord import DiscordException, Intents, Message, app_commands
 from discord.abc import Snowflake
 from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
 from discord.enums import AppCommandType
@@ -81,18 +80,6 @@ class CielTree(app_commands.CommandTree):
 
     def get_app_command(self, command: Command) -> AppCommand | AppCommandGroup | None:
         return self._command_map.get(command)
-
-    async def check_can_run(self, command: Command, interaction: Interaction) -> bool:
-        for check in command.checks:
-            try:
-                result = check(interaction)
-                if inspect.isawaitable(result):
-                    result = await result
-            except app_commands.AppCommandError:
-                return False
-            if not result:
-                return False
-        return True
 
 
 class Ciel(commands.Bot):
@@ -177,10 +164,8 @@ class Ciel(commands.Bot):
             except (ValueError, DiscordException):
                 utils.logger.exception(f"Couldn't Fetch Guild (ID: {debug_guild_id})")
                 raise
-            self.tree.copy_global_to(guild=self.debug_guild)
-            self.tree.clear_commands(guild=None)
 
-        await self.tree.map_all_commands()
+        await self.command_map()
 
     async def on_ready(self) -> None:
         user = self.user.name if self.user else "Unknown"
