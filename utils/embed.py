@@ -3,10 +3,10 @@ from typing import Any, Self
 
 from discord import Color, Embed, Interaction, Member, User
 from discord.app_commands import Command, ContextMenu
+from discord.enums import AppCommandType
 from discord.types.embed import EmbedType
 
-import utils
-
+from .commands import expand_commands
 from .types import CielType
 
 
@@ -159,18 +159,23 @@ class CommandMapEmbed(Embed):
 
     def format(self) -> None:
         self.unmapped = set(self.client.tree.command_map.values())
+        self.guild_map: dict[Command, str] = {}
+        for guild in (None, *self.client.guilds):
+            for cmd in expand_commands(self.client.tree.get_commands(guild=guild, type=AppCommandType.chat_input)):
+                self.guild_map[cmd] = guild.name if guild else "Global"
+
         for cog_name in self.client.cogs:
             cog = self.client.get_cog(cog_name)
             if cog is None:
                 continue
             lines = []
-            for cmd in utils.expand_commands(cog.get_app_commands()):
+            for cmd in expand_commands(cog.get_app_commands()):
                 app_cmd = self.client.tree.command_map.get(cmd)
                 if app_cmd:
-                    lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention}")
+                    lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention} ({self.guild_map.get(cmd, 'Unknown')})")
                     self.unmapped.discard(app_cmd)
                 else:
-                    lines.append(f"`{cmd.qualified_name}` -> None")
+                    lines.append(f"`{cmd.qualified_name}` -> None ({self.guild_map.get(cmd, 'Unknown')})")
             self.add_field(name=cog.qualified_name, value="\n".join(lines) or "No Commands")
 
         self.add_field(
