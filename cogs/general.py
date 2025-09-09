@@ -1,4 +1,5 @@
 from discord import Color, Embed, Interaction, app_commands
+from discord.enums import AppCommandType
 from discord.ext import commands
 
 import utils
@@ -27,7 +28,7 @@ class General(commands.Cog):
                 continue
             lines = []
             for cmd in utils.expand_commands(cog.get_app_commands()):
-                if not await utils.check_can_run(cmd, interaction):
+                if not await utils.can_run_command(cmd, interaction):
                     continue
                 app_command = self.bot.tree.get_app_command(cmd)
                 if app_command is None:
@@ -38,6 +39,15 @@ class General(commands.Cog):
                 lines.extend([f"> ・ {param.name}: {param.description}" for param in cmd.parameters])
             if lines:
                 embed.add_field(name=cog_name, value="\n".join(lines))
+
+        guild = interaction.guild
+        for t in (AppCommandType.user, AppCommandType.message):
+            ctxs = [f" - {cmd.name}" for cmd in self.bot.tree.get_commands(type=t)]
+            guild_ctxs = [f" - {cmd.name}" for cmd in self.bot.tree.get_commands(type=t, guild=guild)]
+            if guild and guild_ctxs:
+                ctxs.append(f"--- {guild.name} Guild Only ---")
+                ctxs.extend(guild_ctxs)
+            embed.add_field(name=f"{t.name.title()} Context Menu", value="\n".join(ctxs) or "No Commands")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

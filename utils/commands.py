@@ -2,11 +2,36 @@ import inspect
 from collections.abc import Generator, Sequence
 from typing import overload
 
-from discord import Interaction
+from discord import DMChannel, Interaction
+from discord.abc import GuildChannel, PrivateChannel
 from discord.app_commands import AppCommand, AppCommandError, AppCommandGroup, Argument, Command, ContextMenu, Group
 
+from .types import CielType
 
-async def check_can_run(command: Command | ContextMenu, interaction: Interaction) -> bool:
+
+def _is_command_available_channel(command: Command | ContextMenu, interaction: Interaction) -> bool:
+    client: CielType = interaction.client  # pyright: ignore[reportAssignmentType]
+    if client:
+        guild = interaction.guild
+        runnable = set()
+        runnable.update(expand_commands(client.tree.get_commands(guild=None)))
+        runnable.update(expand_commands(client.tree.get_commands(guild=guild)))
+        if command not in runnable:
+            return False
+
+    contexts = command.allowed_contexts
+    if contexts:
+        channel = interaction.channel
+        if (
+            not (isinstance(channel, GuildChannel) and contexts.guild)
+            and not (isinstance(channel, DMChannel) and contexts.dm_channel)
+            and not (isinstance(channel, PrivateChannel) and contexts.private_channel)
+        ):
+            return False
+    return True
+
+
+async def _is_command_checks_passed(command: Command | ContextMenu, interaction: Interaction) -> bool:
     for check in command.checks:
         try:
             result = check(interaction)
@@ -17,6 +42,12 @@ async def check_can_run(command: Command | ContextMenu, interaction: Interaction
         if not result:
             return False
     return True
+
+
+async def can_run_command(command: Command | ContextMenu, interaction: Interaction) -> bool:
+    if not _is_command_available_channel(command, interaction):
+        return False
+    return await _is_command_checks_passed(command, interaction)
 
 
 @overload
