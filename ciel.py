@@ -85,20 +85,21 @@ class CielTree(app_commands.CommandTree):
 class Ciel(commands.Bot):
     tree: CielTree  # pyright: ignore[reportIncompatibleMethodOverride]
 
-    def __init__(self, intents: Intents | None = None, debug: bool = False, **options) -> None:  # noqa: ANN003, ARG002
+    def __init__(self, intents: Intents | None = None, sync: bool = False, develop: bool = False, **options) -> None:  # noqa: ANN003, ARG002
         if intents is None:
             intents = Intents.default()
         super().__init__(command_prefix="", help_command=None, tree_cls=CielTree, intents=intents)
-        self.debug = debug
-        self.debug_guild = None
+        self.sync = sync
+        self.develop = develop
+        self.develop_guild = None
 
     def run(self, token: str = "", **options) -> None:  # noqa: ANN003, ARG002
         if not token:
             token = os.getenv("DISCORD_TOKEN", "")
-            if self.debug:
-                token = os.getenv("DEBUG_DISCORD_TOKEN", token)
+            if self.develop:
+                token = os.getenv("DEVELOP_DISCORD_TOKEN", token)
 
-        utils.setup_logging(self.debug)
+        utils.setup_logging(self.develop)
         super().run(token=token, log_handler=None)
 
     async def load_extension(self, name: str, *, package: str | None = None) -> None:
@@ -142,35 +143,38 @@ class Ciel(commands.Bot):
             await self.unload_extension(name)
 
     async def command_map(self) -> None:
-        if self.debug and self.debug_guild:
-            self.tree.copy_global_to(guild=self.debug_guild)
+        if self.develop and self.develop_guild:
+            self.tree.copy_global_to(guild=self.develop_guild)
             self.tree.clear_commands(guild=None)
         await self.tree.map_all_commands()
 
     async def command_sync(self) -> None:
-        if self.debug and self.debug_guild:
-            self.tree.copy_global_to(guild=self.debug_guild)
+        if self.develop and self.develop_guild:
+            self.tree.copy_global_to(guild=self.develop_guild)
             self.tree.clear_commands(guild=None)
-            await self.tree.sync(guild=self.debug_guild)
+            await self.tree.sync(guild=self.develop_guild)
             return
         await self.tree.sync_all()
 
     async def setup_hook(self) -> None:
         await self.load_all_extensions()
-        if self.debug:
-            debug_guild_id = os.getenv("DEBUG_GUILD_ID")
+        if self.develop:
+            develop_guild_id = os.getenv("DEVELOP_GUILD_ID")
             try:
-                self.debug_guild = await self.fetch_guild(int(debug_guild_id))  # pyright: ignore[reportArgumentType]
+                self.develop_guild = await self.fetch_guild(int(develop_guild_id))  # pyright: ignore[reportArgumentType]
             except (ValueError, DiscordException):
-                utils.logger.exception(f"Couldn't Fetch Guild (ID: {debug_guild_id})")
+                utils.logger.exception(f"Couldn't Fetch Guild (ID: {develop_guild_id})")
                 raise
+        if self.sync:  # Develop Mode でも Global Command ごと Sync する
+            await self.tree.sync_all()
+            return
 
         await self.command_map()
 
     async def on_ready(self) -> None:
         user = self.user.name if self.user else "Unknown"
-        debug_status = "Enabled" if self.debug else "Disabled"
-        utils.logger.info(f"Ciel Start-up (User: {user}, Debug Mode: {debug_status})")
+        develop_status = "Enabled" if self.develop else "Disabled"
+        utils.logger.info(f"Ciel Start-up (User: {user}, Develop Mode: {develop_status})")
 
     async def on_message(self, message: Message) -> None:
         pass  # process_commands 関数を無効化
