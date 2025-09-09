@@ -68,6 +68,10 @@ select = [
     "TRY",   # tryceratops
 ]
 ignore = [
+    # "TC": flake8-type-checking
+    "TC001", # typing-only-first-party-import
+    "TC002", # typing-only-third-party-import
+    "TC003", # typing-only-standard-library-import
     # "I": isort
     "I001", # unsorted-imports
     # "W": Warning
