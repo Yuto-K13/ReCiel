@@ -3,7 +3,7 @@ from collections.abc import Generator, Iterable, Mapping
 from pathlib import Path
 from types import MappingProxyType
 
-from discord import DiscordException, Intents, Message, app_commands
+from discord import DiscordException, Intents, Message, NotFound, app_commands
 from discord.abc import Snowflake
 from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
 from discord.enums import AppCommandType
@@ -28,10 +28,14 @@ class CielTree(app_commands.CommandTree):
     async def sync_all(self) -> dict[int | None, list[AppCommand]]:
         self.clear_command_map()
         app_cmds_map = {}
-        if self.get_commands(guild=None):
-            app_cmds_map[None] = await self.sync(guild=None)
-        for guild_id in self._guild_commands:
-            guild = await self.client.fetch_guild(guild_id)
+        for guild_id in (None, *self._guild_commands):
+            guild = None
+            if guild_id is not None:
+                try:
+                    guild = await self.client.fetch_guild(guild_id)
+                except NotFound:
+                    utils.logger.warning(f"Couldn't Fetch Guild (ID: {guild_id})")
+                    continue
             if self.get_commands(guild=guild):
                 app_cmds_map[guild_id] = await self.sync(guild=guild)
         return app_cmds_map
@@ -69,9 +73,14 @@ class CielTree(app_commands.CommandTree):
 
     async def map_all_commands(self) -> None:
         self.clear_command_map()
-        await self.map_commands(guild=None)
-        for guild_id in self._guild_commands:
-            guild = await self.client.fetch_guild(guild_id)
+        for guild_id in (None, *self._guild_commands):
+            guild = None
+            if guild_id is not None:
+                try:
+                    guild = await self.client.fetch_guild(guild_id)
+                except NotFound:
+                    utils.logger.warning(f"Couldn't Fetch Guild (ID: {guild_id})")
+                    continue
             await self.map_commands(guild=guild)
 
     def clear_command_map(self) -> None:
@@ -97,7 +106,11 @@ class Ciel(commands.Bot):
         if not token:
             token = os.getenv("DISCORD_TOKEN", "")
             if self.develop:
-                token = os.getenv("DEVELOP_DISCORD_TOKEN", token)
+                develop_token = os.getenv("DEVELOP_DISCORD_TOKEN")
+                if develop_token is None:
+                    utils.logger.warning("DEVELOP_DISCORD_TOKEN is not found while running in Develop Mode.")
+                else:
+                    token = develop_token
 
         utils.setup_logging(self.develop)
         super().run(token=token, log_handler=None)
