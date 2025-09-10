@@ -44,6 +44,7 @@ class General(commands.Cog):
         for t in (AppCommandType.user, AppCommandType.message):
             ctxs = [f" - {cmd.name}" for cmd in self.bot.tree.get_commands(type=t)]
             guild_ctxs = [f" - {cmd.name}" for cmd in self.bot.tree.get_commands(type=t, guild=guild)]
+            ctxs, guild_ctxs = sorted(ctxs), sorted(guild_ctxs)
             if guild and guild_ctxs:
                 ctxs.append(f"--- {guild.name} Guild Only ---")
                 ctxs.extend(guild_ctxs)
