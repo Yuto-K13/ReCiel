@@ -29,9 +29,9 @@ class Error(commands.Cog):
     @utils.developer_only()
     async def raise_error(self, interaction: Interaction) -> None:
         """Raise a test error."""
-        embed = Embed(title="Raising AppCommandError", color=Color.blue())
+        embed = Embed(title="Raising TestError", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        raise AppCommandError("Test Error")
+        raise utils.CustomError(name="TestError")
 
 
 async def setup(bot: CielType) -> None:

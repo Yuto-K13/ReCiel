@@ -61,14 +61,15 @@ def expand_commands(commands: list[AppCommand]) -> Generator[AppCommand | AppCom
 def expand_commands(
     commands: list[Command | Group] | list[Command | Group | ContextMenu] | list[AppCommand],
 ) -> Generator[Command | ContextMenu | AppCommand | AppCommandGroup]:
-    cmds: Sequence[Command | Group | ContextMenu | AppCommand | AppCommandGroup | Argument] = commands.copy()
+    cmds: Sequence[Command | Group | ContextMenu | AppCommand | AppCommandGroup | Argument]
+    cmds = sorted(commands, key=lambda c: c.name)
     while cmds:
         cmd = cmds.pop(0)
         if isinstance(cmd, Group):
-            cmds = cmd.commands + cmds
+            cmds = sorted(cmd.commands, key=lambda c: c.name) + cmds
             continue
         if isinstance(cmd, (AppCommand, AppCommandGroup)):
-            cmds = cmd.options + cmds
+            cmds = sorted(cmd.options, key=lambda c: c.name) + cmds
             continue
         if isinstance(cmd, Argument):
             continue
