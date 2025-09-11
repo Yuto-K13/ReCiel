@@ -1,5 +1,4 @@
 from discord import Color, Interaction, app_commands
-from discord.app_commands import Group
 from discord.ext import commands
 
 import utils
@@ -51,9 +50,7 @@ class Develop(commands.Cog):
         embed = ExtensionEmbed(client=self.bot, title="Reloaded and Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    command = Group(name="command", description="Command Management")
-
-    @command.command()
+    @app_commands.command()
     @utils.developer_only()
     async def sync(self, interaction: Interaction) -> None:
         """Sync All Commands."""
@@ -64,7 +61,7 @@ class Develop(commands.Cog):
         embed = CommandMapEmbed(client=self.bot, title="Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    @command.command()
+    @app_commands.command()
     @utils.developer_only()
     async def register(self, interaction: Interaction) -> None:
         """Register All Commands for Command Map."""
@@ -75,7 +72,7 @@ class Develop(commands.Cog):
         embed = CommandMapEmbed(client=self.bot, title="Registered!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    @command.command()
+    @app_commands.command()
     @utils.developer_only()
     async def map(self, interaction: Interaction) -> None:
         """Show Command Map."""
