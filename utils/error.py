@@ -103,6 +103,11 @@ class CustomError(AppCommandError):
         super().__init__(*args)
 
 
+class DeveloperCommandError(CustomError):
+    def __init__(self, *args: object) -> None:
+        super().__init__("This Command is Only for Developers.", *args)
+
+
 class ExtensionNotFoundError(CustomError):
     def __init__(self, extension: str, *args: object) -> None:
         super().__init__(f"Extension '{extension}' Not Found.", *args)
