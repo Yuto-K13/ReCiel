@@ -1,9 +1,10 @@
 from discord import Color, Interaction, app_commands
-from discord.app_commands import Group
 from discord.ext import commands
 
 import utils
 from utils.types import CielType
+
+from .embed import CommandMapEmbed, ExtensionEmbed
 
 
 class Develop(commands.Cog):
@@ -14,7 +15,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def extensions(self, interaction: Interaction) -> None:
         """Show All Extensions."""
-        embed = utils.ExtensionEmbed(client=self.bot, title="Extensions", color=Color.blue())
+        embed = ExtensionEmbed(client=self.bot, title="Extensions", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
@@ -23,7 +24,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def reload(self, interaction: Interaction, extension: str | None = None, sync: bool = True) -> None:
         """Reload the Specified or All Extensions."""
-        embed = utils.ExtensionEmbed(client=self.bot, title="Reloading...", color=Color.blue())
+        embed = ExtensionEmbed(client=self.bot, title="Reloading...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
         if extension is None:
@@ -34,50 +35,49 @@ class Develop(commands.Cog):
         elif f"cogs.{extension}" in self.bot.extension_files():
             await self.bot.load_extension(f"cogs.{extension}")
         else:
-            raise commands.ExtensionNotFound(extension)
+            raise utils.ExtensionNotFoundError(extension)
 
         if not sync:
             await self.bot.command_map()
-            embed = utils.ExtensionEmbed(client=self.bot, title="Reloaded!", color=Color.green())
+            embed = ExtensionEmbed(client=self.bot, title="Reloaded!", color=Color.green())
             await interaction.edit_original_response(embed=embed)
             return
 
-        embed = utils.ExtensionEmbed(client=self.bot, title="Syncing...", color=Color.blue())
+        embed = ExtensionEmbed(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.edit_original_response(embed=embed)
         await self.bot.command_sync()
 
-        embed = utils.ExtensionEmbed(client=self.bot, title="Reloaded and Synced!", color=Color.green())
+        embed = ExtensionEmbed(client=self.bot, title="Reloaded and Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    command = Group(name="command", description="Command Management")
-
-    @command.command()
+    @app_commands.command()
+    @app_commands.describe(force="Sync Global Commands Forcefully while running in Develop Mode.")
     @utils.developer_only()
-    async def sync(self, interaction: Interaction) -> None:
+    async def sync(self, interaction: Interaction, force: bool = False) -> None:
         """Sync All Commands."""
-        embed = utils.CommandMapEmbed(client=self.bot, title="Syncing...", color=Color.blue())
+        embed = CommandMapEmbed(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        await self.bot.command_sync()
+        await self.bot.command_sync(force=force)
 
-        embed = utils.CommandMapEmbed(client=self.bot, title="Synced!", color=Color.green())
+        embed = CommandMapEmbed(client=self.bot, title="Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    @command.command()
+    @app_commands.command()
     @utils.developer_only()
     async def register(self, interaction: Interaction) -> None:
         """Register All Commands for Command Map."""
-        embed = utils.CommandMapEmbed(client=self.bot, title="Registering...", color=Color.blue())
+        embed = CommandMapEmbed(client=self.bot, title="Registering...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_map()
 
-        embed = utils.CommandMapEmbed(client=self.bot, title="Registered!", color=Color.green())
+        embed = CommandMapEmbed(client=self.bot, title="Registered!", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
-    @command.command()
+    @app_commands.command()
     @utils.developer_only()
     async def map(self, interaction: Interaction) -> None:
         """Show Command Map."""
-        embed = utils.CommandMapEmbed(client=self.bot, title="Command Map", color=Color.blue())
+        embed = CommandMapEmbed(client=self.bot, title="Command Map", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
