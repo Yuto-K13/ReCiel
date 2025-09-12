@@ -15,9 +15,10 @@ discord.py で構築された、多目的で拡張可能な Discord ボットで
 ### 👑 開発者用 (Develop)
 
 Botのオーナーのみが使用できる機能
+
 - **/reload** : extensionのホットリロード
-- **/command sync** : 手動でのコマンド同期
-- **/command map** : コマンド情報の詳細確認
+- **/sync** : 手動でのコマンド同期
+- **/map** : コマンド情報の詳細確認
 
 ## 🚀 導入方法 (Getting Started)
 
@@ -66,23 +67,26 @@ uv run python main.py
 .
 ├── cogs/              # コグ（機能拡張）ディレクトリ
 │   ├── __init__.py    # 初期化処理
-│   ├── develop.py     # 開発用コマンド
+│   ├── develop/          # 開発用コマンド（サブディレクトリ）
+│   │   ├── __init__.py   # 初期化処理
+│   │   ├── core.py       # 主要処理
+│   │   └── embed.py      # 専用Embed
 │   ├── error.py       # エラーハンドリング
 │   └── general.py     # 一般コマンド
 ├── utils/             # ユーティリティ（補助機能）ディレクトリ
 │   ├── __init__.py    # 初期化処理
 │   ├── commands.py    # コマンド関連機能
 │   ├── decorators.py  # コマンド用デコレーター
-│   ├── embed.py       # 拡張Embed
+│   ├── error.py       # エラーハンドリング補助
 │   ├── logging.py     # ロギング機能
 │   └── types.py       # 型アノテーション
-├── .env               # 環境変数ファイル (トークンなど)
-├── .gitignore         # Gitで無視するファイル
-├── main.py            # メインファイル
-├── ciel.py            # Bot本体クラス
-├── pyproject.toml     # プロジェクト設定と依存関係
-├── uv.lock            # 依存関係のロックファイル
-└── README.md          # このファイル
+├── .env            # 環境変数ファイル (トークンなど)
+├── .gitignore      # Gitで無視するファイル
+├── main.py         # メインファイル
+├── ciel.py         # Bot本体クラス
+├── pyproject.toml  # プロジェクト設定と依存関係
+├── uv.lock         # 依存関係のロックファイル
+└── README.md       # このファイル
 ```
 
 ## 👑 開発者用機能 (Advanced Features)
@@ -93,11 +97,13 @@ uv run python main.py
 
 - **/extensions** : 現在ロードされている拡張の一覧を表示します。
 - **/reload [extension] [sync]** : 指定した拡張、または全拡張をリロードし、必要に応じてコマンド同期も行います。
-- **/command sync** : すべてのコマンドをDiscordに同期します。
-- **/command register** : `Command`と`AppCommand`の関係を再登録します。
-- **/command map** : 現在の`Command`と`AppCommand`の対応状況を表示します。
+- **/sync [force]** : すべてのコマンドをDiscordに同期します。
+- **/register** : `Command`と`AppCommand`の関係を再登録します。
+- **/map** : 現在の`Command`と`AppCommand`の対応状況を表示します。
 
-これらのコマンドは、Botのオーナーのみが利用できるよう `developer_only` デコレーターで保護されています。
+これらのコマンドは、Botのオーナーのみが利用できるよう `developer_only` デコレータで保護されています。
+
+`developer_only` デコレータは `user_install` デコレータを内包しているため、Botのオーナーは [Discord Developer Portal](https://discord.com/developers/applications) からUser Installを有効化する必要があります。
 
 ### 環境ファイル `.env`
 
