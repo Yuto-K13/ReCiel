@@ -51,12 +51,13 @@ class Develop(commands.Cog):
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command()
+    @app_commands.describe(force="Sync Global Commands Forcefully while running in Develop Mode.")
     @utils.developer_only()
-    async def sync(self, interaction: Interaction) -> None:
+    async def sync(self, interaction: Interaction, force: bool = False) -> None:
         """Sync All Commands."""
         embed = CommandMapEmbed(client=self.bot, title="Syncing...", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        await self.bot.command_sync()
+        await self.bot.command_sync(force=force)
 
         embed = CommandMapEmbed(client=self.bot, title="Synced!", color=Color.green())
         await interaction.edit_original_response(embed=embed)

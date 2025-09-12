@@ -169,8 +169,8 @@ class Ciel(commands.Bot):
         self.copy_develop_command()
         await self.tree.map_all_commands()
 
-    async def command_sync(self) -> None:
-        if self.copy_develop_command():
+    async def command_sync(self, *, force: bool = False) -> None:
+        if not force and self.copy_develop_command():
             await self.tree.sync(guild=self.develop_guild)
             return
         await self.tree.sync_all()
@@ -185,8 +185,7 @@ class Ciel(commands.Bot):
                 utils.logger.exception(f"Couldn't Fetch Guild (ID: {develop_guild_id})")
                 raise
         if self.sync:  # Develop Mode でも Global Command ごと Sync する
-            self.copy_develop_command()
-            await self.tree.sync_all()
+            await self.command_sync(force=True)
             return
 
         await self.command_map()
