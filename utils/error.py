@@ -102,6 +102,9 @@ class CustomError(AppCommandError):
         self.name = name
         super().__init__(*args)
 
+    def __str__(self) -> str:
+        return "\n".join(map(str, self.args))
+
 
 class DeveloperCommandError(CustomError):
     def __init__(self, *args: object) -> None:
