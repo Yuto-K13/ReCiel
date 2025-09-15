@@ -36,8 +36,7 @@ class CielTree(app_commands.CommandTree):
                 except NotFound:
                     utils.logger.warning(f"Couldn't Fetch Guild (ID: {guild_id})")
                     continue
-            if self.get_commands(guild=guild):
-                app_cmds_map[guild_id] = await self.sync(guild=guild)
+            app_cmds_map[guild_id] = await self.sync(guild=guild)
         return app_cmds_map
 
     @property
