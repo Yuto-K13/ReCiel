@@ -36,8 +36,7 @@ class CielTree(app_commands.CommandTree):
                 except NotFound:
                     utils.logger.warning(f"Couldn't Fetch Guild (ID: {guild_id})")
                     continue
-            if self.get_commands(guild=guild):
-                app_cmds_map[guild_id] = await self.sync(guild=guild)
+            app_cmds_map[guild_id] = await self.sync(guild=guild)
         return app_cmds_map
 
     @property
@@ -103,6 +102,7 @@ class Ciel(commands.Bot):
         self.develop_guild = None
 
     def run(self, token: str = "", **options) -> None:  # noqa: ANN003, ARG002
+        utils.setup_logging(self.develop)
         if not token:
             token = os.getenv("DISCORD_TOKEN", "")
             if self.develop:
@@ -112,7 +112,6 @@ class Ciel(commands.Bot):
                 else:
                     token = develop_token
 
-        utils.setup_logging(self.develop)
         super().run(token=token, log_handler=None)
 
     async def load_extension(self, name: str, *, package: str | None = None) -> None:
@@ -170,7 +169,7 @@ class Ciel(commands.Bot):
         await self.tree.map_all_commands()
 
     async def command_sync(self, *, force: bool = False) -> None:
-        if not force and self.copy_develop_command():
+        if self.copy_develop_command() and not force:
             await self.tree.sync(guild=self.develop_guild)
             return
         await self.tree.sync_all()
