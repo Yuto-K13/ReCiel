@@ -51,7 +51,7 @@ class Develop(commands.Cog):
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command()
-    @app_commands.describe(force="Sync Global Commands Forcefully while running in Develop Mode.")
+    @app_commands.describe(force="Sync All Global/Guild Commands Forcefully while running in Develop Mode.")
     @utils.developer_only()
     async def sync(self, interaction: Interaction, force: bool = False) -> None:
         """Sync All Commands."""
