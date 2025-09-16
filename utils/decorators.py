@@ -11,4 +11,4 @@ def developer_only():  # noqa: ANN201
             raise DeveloperCommandError
         return True
 
-    return app_commands.user_install(app_commands.check(predicate))
+    return app_commands.check(predicate)
