@@ -1,4 +1,5 @@
-from discord import Color, Interaction, app_commands
+from discord import Color, Embed, Interaction, app_commands
+from discord.enums import AppCommandType
 from discord.ext import commands
 
 import utils
@@ -78,6 +79,34 @@ class Develop(commands.Cog):
     async def map(self, interaction: Interaction) -> None:
         """Show Command Map."""
         embed = CommandMapEmbed(client=self.bot, title="Command Map", color=Color.blue())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command()
+    @utils.developer_only()
+    async def commands(self, interaction: Interaction) -> None:
+        """Show All Commands for each Guild."""
+        embed = Embed(title="Command List", color=Color.blue())
+        for guild in (None, *self.bot.guilds):
+            app_cmds = utils.expand_commands(await self.bot.tree.fetch_commands(guild=guild))
+            app_cmds = {app_cmd for app_cmd in app_cmds if app_cmd.type == AppCommandType.chat_input}
+            cmds = self.bot.tree.get_commands(guild=guild, type=AppCommandType.chat_input)
+
+            lines = []
+            for cmd in utils.expand_commands(cmds):
+                app_cmd = self.bot.tree.get_app_command(cmd)
+                if app_cmd is not None:
+                    lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention}")
+                    app_cmds.discard(app_cmd)
+                else:
+                    lines.append(f"`{cmd.qualified_name}` -> None")
+            if app_cmds:
+                lines.append("--- Unknown AppCommands ---")
+                lines.extend([app_cmd.mention for app_cmd in sorted(app_cmds, key=lambda c: c.name)])
+
+            if lines:
+                guild_name = guild.name if guild is not None else "Global"
+                embed.add_field(name=guild_name, value="\n".join(lines))
+
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

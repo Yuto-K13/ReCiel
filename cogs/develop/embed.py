@@ -86,7 +86,7 @@ class CommandMapEmbed(Embed):
                 continue
             lines = []
             for cmd in utils.expand_commands(cog.get_app_commands()):
-                app_cmd = self.client.tree.command_map.get(cmd)
+                app_cmd = self.client.tree.get_app_command(cmd)
                 if app_cmd is not None:
                     lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention} ({self.guild_map.get(cmd, 'Unknown')})")
                     self.unmapped.discard(app_cmd)
