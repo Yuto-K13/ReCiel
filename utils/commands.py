@@ -11,16 +11,16 @@ from .types import CielType
 
 def _is_command_available_channel(command: Command | ContextMenu, interaction: Interaction) -> bool:
     client: CielType = interaction.client  # pyright: ignore[reportAssignmentType]
-    if client:
-        guild = interaction.guild
-        runnable = set()
-        runnable.update(expand_commands(client.tree.get_commands(guild=None)))
+    guild = interaction.guild
+
+    runnable = set(expand_commands(client.tree.get_commands(guild=None)))
+    if guild is not None:
         runnable.update(expand_commands(client.tree.get_commands(guild=guild)))
-        if command not in runnable:
-            return False
+    if command not in runnable:
+        return False
 
     contexts = command.allowed_contexts
-    if contexts:
+    if contexts is not None:
         channel = interaction.channel
         if (
             not (isinstance(channel, GuildChannel) and contexts.guild)
