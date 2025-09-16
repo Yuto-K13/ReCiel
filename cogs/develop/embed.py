@@ -78,7 +78,7 @@ class CommandMapEmbed(Embed):
         for guild in (None, *self.client.guilds):
             cmds = self.client.tree.get_commands(guild=guild, type=AppCommandType.chat_input)
             for cmd in utils.expand_commands(cmds):
-                self.guild_map[cmd] = guild.name if guild else "Global"
+                self.guild_map[cmd] = guild.name if guild is not None else "Global"
 
         for cog_name in self.client.cogs:
             cog = self.client.get_cog(cog_name)
@@ -87,7 +87,7 @@ class CommandMapEmbed(Embed):
             lines = []
             for cmd in utils.expand_commands(cog.get_app_commands()):
                 app_cmd = self.client.tree.command_map.get(cmd)
-                if app_cmd:
+                if app_cmd is not None:
                     lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention} ({self.guild_map.get(cmd, 'Unknown')})")
                     self.unmapped.discard(app_cmd)
                 else:
