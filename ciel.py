@@ -20,7 +20,7 @@ class CielTree(app_commands.CommandTree):
         self._command_map: dict[Command, AppCommand | AppCommandGroup] = {}
 
     async def sync(self, *, guild: Snowflake | None = None) -> list[AppCommand]:
-        utils.logger.debug(f"Syncing Commands (Guild: {guild})")
+        utils.logger.info(f"Syncing Commands (Guild: {guild})")
         app_cmds = await super().sync(guild=guild)
         await self.map_commands(guild=guild)
         return app_cmds
@@ -51,13 +51,13 @@ class CielTree(app_commands.CommandTree):
             self._command_map[cmd] = app_cmd
 
     async def map_commands(self, guild: Snowflake | None = None) -> None:
-        utils.logger.debug(f"Mapping Commands (Guild: {guild})")
+        utils.logger.info(f"Mapping Commands (Guild: {guild})")
         cmds = self.get_commands(guild=guild, type=AppCommandType.chat_input)
         app_cmds = await self.fetch_commands(guild=guild)
         self._mapping(cmds, app_cmds)
 
     def clear_command_map(self) -> None:
-        utils.logger.debug("Clearing Command Map")
+        utils.logger.info("Clearing Command Map")
         self._command_map.clear()
 
     def get_app_command(self, command: Command) -> AppCommand | AppCommandGroup | None:
