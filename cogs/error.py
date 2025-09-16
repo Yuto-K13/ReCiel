@@ -31,7 +31,7 @@ class Error(commands.Cog):
         """Raise a test error."""
         embed = Embed(title="Raising TestError", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        raise utils.CustomError(name="TestError")
+        raise utils.CustomError("Raised TestError")
 
 
 async def setup(bot: CielType) -> None:
