@@ -98,10 +98,11 @@ class ErrorEmbed(Embed):
 
 
 class CustomError(AppCommandError):
-    def __init__(self, *args: object) -> None:
+    def __init__(self, *args: object, name: str = "", msg: str = "", ignore: bool = False) -> None:
         super().__init__(*args)
-        self.name = self.__class__.__name__
-        self.msg = ""
+        self.name = name or self.__class__.__name__
+        self.msg = msg
+        self.ignore = ignore
 
     def __str__(self) -> str:
         if not self.msg:
@@ -111,17 +112,14 @@ class CustomError(AppCommandError):
 
 class InvalidAttributeError(CustomError):
     def __init__(self, attribute_name: str, *args: object) -> None:
-        super().__init__(*args)
-        self.msg = f"無効な属性: {attribute_name}"
+        super().__init__(*args, msg=f"無効な属性: {attribute_name}")
 
 
 class DeveloperCommandError(CustomError):
     def __init__(self, *args: object) -> None:
-        super().__init__(*args)
-        self.msg = "This Command is Only for Developers."
+        super().__init__(*args, msg="This Command is Only for Developers.", ignore=True)
 
 
 class ExtensionNotFoundError(CustomError):
     def __init__(self, extension: str, *args: object) -> None:
-        super().__init__(*args)
-        self.msg = f"Extension '{extension}' Not Found."
+        super().__init__(*args, msg=f'Extension "{extension}" Not Found.')
