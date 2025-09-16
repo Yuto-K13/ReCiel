@@ -103,8 +103,6 @@ uv run python main.py
 
 これらのコマンドは、Botのオーナーのみが利用できるよう `developer_only` デコレータで保護されています。
 
-`developer_only` デコレータは `user_install` デコレータを内包しているため、Botのオーナーは [Discord Developer Portal](https://discord.com/developers/applications) からUser Installを有効化する必要があります。
-
 ### 環境ファイル `.env`
 
 Botのトークンに加えて `.env` ファイルには開発者用の情報を指定できます。

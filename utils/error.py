@@ -85,32 +85,41 @@ class ErrorEmbed(Embed):
             self.color = Color.red()
 
         if isinstance(self.command, Command):
-            if app_cmd := self.client.tree.get_app_command(self.command):
+            app_cmd = self.client.tree.get_app_command(self.command)
+            if app_cmd is not None:
                 self.add_field(name="Command", value=app_cmd.mention)
             else:
                 self.add_field(name="Command", value=f"/{self.command.qualified_name}")
         elif isinstance(self.command, ContextMenu):
             self.add_field(name="Command", value=self.command.name)
-        if self.user:
+
+        if self.user is not None:
             self.add_field(name="User", value=self.user.mention)
 
 
 class CustomError(AppCommandError):
-    def __init__(self, *args: object, name: str | None = None) -> None:
-        if name is None:
-            name = self.__class__.__name__
-        self.name = name
+    def __init__(self, *args: object, name: str = "", msg: str = "", ignore: bool = False) -> None:
         super().__init__(*args)
+        self.name = name or self.__class__.__name__
+        self.msg = msg
+        self.ignore = ignore
 
     def __str__(self) -> str:
-        return "\n".join(map(str, self.args))
+        if not self.msg:
+            return "\n".join(map(str, self.args))
+        return "\n".join(map(str, (self.msg, *self.args)))
+
+
+class InvalidAttributeError(CustomError):
+    def __init__(self, attribute_name: str, *args: object) -> None:
+        super().__init__(*args, msg=f"無効な属性: {attribute_name}")
 
 
 class DeveloperCommandError(CustomError):
     def __init__(self, *args: object) -> None:
-        super().__init__("This Command is Only for Developers.", *args)
+        super().__init__(*args, msg="This Command is Only for Developers.", ignore=True)
 
 
 class ExtensionNotFoundError(CustomError):
     def __init__(self, extension: str, *args: object) -> None:
-        super().__init__(f"Extension '{extension}' Not Found.", *args)
+        super().__init__(*args, msg=f'Extension "{extension}" Not Found.')
