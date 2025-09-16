@@ -45,7 +45,7 @@ class General(commands.Cog):
             ctxs = [f" - {cmd.name}" for cmd in self.bot.tree.get_commands(type=t)]
             guild_ctxs = [f" - {cmd.name}" for cmd in self.bot.tree.get_commands(type=t, guild=guild)]
             ctxs, guild_ctxs = sorted(ctxs), sorted(guild_ctxs)
-            if guild and guild_ctxs:
+            if guild is not None and guild_ctxs:
                 ctxs.append(f"--- {guild.name} Guild Only ---")
                 ctxs.extend(guild_ctxs)
             embed.add_field(name=f"{t.name.title()} Context Menu", value="\n".join(ctxs) or "No Commands")

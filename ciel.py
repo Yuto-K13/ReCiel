@@ -132,7 +132,7 @@ class Ciel(commands.Bot):
             await self.unload_extension(name)
 
     def copy_develop_command(self) -> bool:
-        if self.develop and self.develop_guild:
+        if self.develop and self.develop_guild is not None:
             self.tree.copy_global_to(guild=self.develop_guild)
             self.tree.clear_commands(guild=None)
             return True
@@ -172,7 +172,7 @@ class Ciel(commands.Bot):
         self.loop.create_task(self.setup_commands())
 
     async def on_ready(self) -> None:
-        user = self.user.name if self.user else "Unknown"
+        user = self.user.name if self.user is not None else "Unknown"
         develop_status = "Enabled" if self.develop else "Disabled"
         utils.logger.info(f"Ciel Start-up (User: {user}, Develop Mode: {develop_status})")
 

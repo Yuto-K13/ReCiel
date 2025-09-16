@@ -85,13 +85,15 @@ class ErrorEmbed(Embed):
             self.color = Color.red()
 
         if isinstance(self.command, Command):
-            if app_cmd := self.client.tree.get_app_command(self.command):
+            app_cmd = self.client.tree.get_app_command(self.command)
+            if app_cmd is not None:
                 self.add_field(name="Command", value=app_cmd.mention)
             else:
                 self.add_field(name="Command", value=f"/{self.command.qualified_name}")
         elif isinstance(self.command, ContextMenu):
             self.add_field(name="Command", value=self.command.name)
-        if self.user:
+
+        if self.user is not None:
             self.add_field(name="User", value=self.user.mention)
 
 
