@@ -3,7 +3,7 @@ from collections.abc import Generator, Iterable, Mapping
 from pathlib import Path
 from types import MappingProxyType
 
-from discord import DiscordException, Intents, Message, NotFound, app_commands
+from discord import DiscordException, Intents, Message, app_commands
 from discord.abc import Snowflake
 from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
 from discord.enums import AppCommandType
@@ -24,20 +24,6 @@ class CielTree(app_commands.CommandTree):
         app_cmds = await super().sync(guild=guild)
         await self.map_commands(guild=guild)
         return app_cmds
-
-    async def sync_all(self) -> dict[int | None, list[AppCommand]]:
-        self.clear_command_map()
-        app_cmds_map = {}
-        for guild_id in (None, *self._guild_commands):
-            guild = None
-            if guild_id is not None:
-                try:
-                    guild = await self.client.fetch_guild(guild_id)
-                except NotFound:
-                    utils.logger.warning(f"Couldn't Fetch Guild (ID: {guild_id})")
-                    continue
-            app_cmds_map[guild_id] = await self.sync(guild=guild)
-        return app_cmds_map
 
     @property
     def command_map(self) -> Mapping[Command, AppCommand | AppCommandGroup]:
@@ -69,18 +55,6 @@ class CielTree(app_commands.CommandTree):
         cmds = self.get_commands(guild=guild, type=AppCommandType.chat_input)
         app_cmds = await self.fetch_commands(guild=guild)
         self._mapping(cmds, app_cmds)
-
-    async def map_all_commands(self) -> None:
-        self.clear_command_map()
-        for guild_id in (None, *self._guild_commands):
-            guild = None
-            if guild_id is not None:
-                try:
-                    guild = await self.client.fetch_guild(guild_id)
-                except NotFound:
-                    utils.logger.warning(f"Couldn't Fetch Guild (ID: {guild_id})")
-                    continue
-            await self.map_commands(guild=guild)
 
     def clear_command_map(self) -> None:
         utils.logger.debug("Clearing Command Map")
@@ -166,13 +140,24 @@ class Ciel(commands.Bot):
 
     async def command_map(self) -> None:
         self.copy_develop_command()
-        await self.tree.map_all_commands()
+        for guild in (None, *self.guilds):
+            await self.tree.map_commands(guild=guild)
 
     async def command_sync(self, *, force: bool = False) -> None:
         if self.copy_develop_command() and not force:
             await self.tree.sync(guild=self.develop_guild)
             return
-        await self.tree.sync_all()
+
+        self.tree.clear_command_map()
+        for guild in (None, *self.guilds):
+            await self.tree.sync(guild=guild)
+
+    async def setup_commands(self) -> None:
+        await self.wait_until_ready()
+        if self.sync:  # Develop Mode でも Global Command ごと Sync する
+            await self.command_sync(force=True)
+        else:
+            await self.command_map()
 
     async def setup_hook(self) -> None:
         await self.load_all_extensions()
@@ -183,11 +168,8 @@ class Ciel(commands.Bot):
             except (ValueError, DiscordException):
                 utils.logger.exception(f"Couldn't Fetch Guild (ID: {develop_guild_id})")
                 raise
-        if self.sync:  # Develop Mode でも Global Command ごと Sync する
-            await self.command_sync(force=True)
-            return
 
-        await self.command_map()
+        self.loop.create_task(self.setup_commands())
 
     async def on_ready(self) -> None:
         user = self.user.name if self.user else "Unknown"
