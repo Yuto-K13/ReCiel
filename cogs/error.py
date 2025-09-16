@@ -11,6 +11,15 @@ class Error(commands.Cog):
         self.bot = bot
 
     async def on_tree_error(self, interaction: Interaction, error: AppCommandError) -> None:
+        if not isinstance(error, utils.CustomError) or not error.ignore:
+            texts = [
+                f"User: {interaction.user.display_name}",
+                f"Guild: {interaction.guild}",
+                f"Channel: {interaction.channel}",
+                f"Command: {interaction.command.qualified_name if interaction.command is not None else 'None'}",
+            ]
+            utils.logger.exception(", ".join(texts), exc_info=error)
+
         embed = utils.ErrorEmbed.from_interaction(client=self.bot, error=error, interaction=interaction)
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -31,7 +40,7 @@ class Error(commands.Cog):
         """Raise a test error."""
         embed = Embed(title="Raising TestError", color=Color.blue())
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        raise utils.CustomError("Raised TestError")
+        raise utils.CustomError("Raised TestError", name="TestError")
 
 
 async def setup(bot: CielType) -> None:
