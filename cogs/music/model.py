@@ -6,6 +6,7 @@ from concurrent.futures import ProcessPoolExecutor
 from typing import Self
 
 import yt_dlp
+import yt_dlp.utils
 from discord import AudioSource, FFmpegPCMAudio, Guild, Interaction, Member, User, VoiceClient
 from discord.abc import Messageable, PrivateChannel
 from discord.channel import VocalGuildChannel
@@ -101,7 +102,7 @@ class YTDLPTrack(Track):
             with yt_dlp.YoutubeDL(YTDLP_OPTIONS) as ydl:  # pyright: ignore[reportArgumentType]
                 info = ydl.extract_info(url, download=False)
                 info = ydl.sanitize_info(info)
-        except yt_dlp.DownloadError as e:
+        except yt_dlp.utils.DownloadError as e:
             raise error.DownloadError(str(e)) from e
         return info  # pyright: ignore[reportReturnType]
 
