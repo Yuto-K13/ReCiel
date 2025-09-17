@@ -12,6 +12,7 @@ from discord.abc import Messageable, PrivateChannel
 from discord.channel import VocalGuildChannel
 from discord.ext import tasks
 
+import utils
 from utils.types import CielType
 
 from . import error
@@ -85,7 +86,7 @@ class Track:
 
     def get_audio_source(self) -> AudioSource:
         if self.source is None:
-            raise error.InvalidAttributeError(f"{self.__class__.__name__}.source")
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.source")
         before_options = FFMPEG_BEFORE_OPTIONS.copy()
         options = FFMPEG_OPTIONS.copy()
         if self.headers:
@@ -104,6 +105,8 @@ class YTDLPTrack(Track):
                 info = ydl.sanitize_info(info)
         except yt_dlp.utils.DownloadError as e:
             raise error.DownloadError(str(e)) from e
+        except yt_dlp.utils.YoutubeDLError as e:
+            raise error.YouTubeDLPError(str(e)) from e
         return info  # pyright: ignore[reportReturnType]
 
     @classmethod
@@ -232,20 +235,20 @@ class MusicState:
     @property
     def interaction(self) -> Interaction:
         if self._interaction is None:
-            raise error.InvalidAttributeError(f"{self.__class__.__name__}.interaction")
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.interaction")
         return self._interaction
 
     @property
     def voice(self) -> VoiceClient:
         if not self.is_connected():
-            raise error.InvalidAttributeError(f"{self.__class__.__name__}.voice") from error.NotConnectedError
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.voice") from error.NotConnectedError
         return self._voice  # pyright: ignore[reportReturnType]
 
     @property
     def text_channel(self) -> Messageable:
         channel = self.interaction.channel
         if not isinstance(channel, Messageable) or isinstance(channel, PrivateChannel):
-            raise error.InvalidAttributeError(f"{self.__class__.__name__}.text_channel")
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.text_channel")
         return channel
 
     @property
@@ -255,7 +258,7 @@ class MusicState:
     @property
     def guild(self) -> Guild:
         if self.interaction.guild is None:
-            raise error.InvalidAttributeError(f"{self.__class__.__name__}.guild")
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.guild")
         return self.interaction.guild
 
     def is_connected(self) -> bool:
