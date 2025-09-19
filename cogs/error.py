@@ -1,5 +1,4 @@
 from discord import Color, Embed, Interaction, app_commands
-from discord.app_commands import AppCommandError
 from discord.ext import commands
 
 import utils
@@ -10,14 +9,17 @@ class Error(commands.Cog):
     def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
-    async def on_tree_error(self, interaction: Interaction, error: AppCommandError) -> None:
+    @commands.Cog.listener()
+    async def on_interaction_error(self, interaction: Interaction, error: Exception, /, **kwargs: object) -> None:
         if not isinstance(error, utils.CustomError) or not error.ignore:
             texts = [
                 f"User: {interaction.user.display_name}",
                 f"Guild: {interaction.guild}",
                 f"Channel: {interaction.channel}",
-                f"Command: {interaction.command.qualified_name if interaction.command is not None else 'None'}",
             ]
+            for key, value in kwargs.items():
+                texts.append(f"{key.title()}: {value}")
+
             utils.logger.exception(", ".join(texts), exc_info=error)
 
         embed = utils.ErrorEmbed.from_interaction(client=self.bot, error=error, interaction=interaction)
@@ -26,13 +28,6 @@ class Error(commands.Cog):
             await interaction.delete_original_response()
             return
         await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    async def cog_load(self) -> None:
-        self._prev_on_error = self.bot.tree.on_error
-        self.bot.tree.on_error = self.on_tree_error
-
-    async def cog_unload(self) -> None:
-        self.bot.tree.on_error = self._prev_on_error
 
     @app_commands.command(name="raise")
     @utils.developer_only()
