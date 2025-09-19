@@ -6,7 +6,7 @@ import utils
 from utils.types import CielType
 
 
-class General(commands.Cog):
+class GeneralCog(commands.Cog, name="General"):
     def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
@@ -54,4 +54,4 @@ class General(commands.Cog):
 
 
 async def setup(bot: CielType) -> None:
-    await bot.add_cog(General(bot))
+    await bot.add_cog(GeneralCog(bot))
