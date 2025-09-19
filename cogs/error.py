@@ -33,7 +33,7 @@ class ErrorCog(commands.Cog, name="Error"):
     @utils.developer_only()
     async def raise_error(self, interaction: Interaction) -> None:
         """Raise a test error."""
-        embed = Embed(title="Raising TestError", color=Color.blue())
+        embed = Embed(title="Raising TestError", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         raise utils.CustomError("Raised TestError", name="TestError")
 
