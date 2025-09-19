@@ -74,7 +74,6 @@ class Ciel(commands.Bot):
         intents: Intents | None = None,
         sync: bool = False,
         develop: bool = False,
-        /,
         **kwargs: object,  # noqa: ARG002
     ) -> None:
         if intents is None:
