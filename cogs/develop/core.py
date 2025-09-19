@@ -8,7 +8,7 @@ from utils.types import CielType
 from .embed import CommandMapEmbed, ExtensionEmbed
 
 
-class Develop(commands.Cog):
+class DevelopCog(commands.Cog, name="Develop"):
     def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
@@ -111,4 +111,4 @@ class Develop(commands.Cog):
 
 
 async def setup(bot: CielType) -> None:
-    await bot.add_cog(Develop(bot))
+    await bot.add_cog(DevelopCog(bot))

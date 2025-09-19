@@ -5,7 +5,7 @@ import utils
 from utils.types import CielType
 
 
-class Error(commands.Cog):
+class ErrorCog(commands.Cog, name="Error"):
     def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
@@ -39,4 +39,4 @@ class Error(commands.Cog):
 
 
 async def setup(bot: CielType) -> None:
-    await bot.add_cog(Error(bot))
+    await bot.add_cog(ErrorCog(bot))
