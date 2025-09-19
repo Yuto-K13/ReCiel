@@ -8,7 +8,7 @@ from utils.types import CielType
 from .embed import CommandMapEmbed, ExtensionEmbed
 
 
-class Develop(commands.Cog):
+class DevelopCog(commands.Cog, name="Develop"):
     def __init__(self, bot: CielType) -> None:
         self.bot = bot
 
@@ -16,7 +16,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def extensions(self, interaction: Interaction) -> None:
         """Show All Extensions."""
-        embed = ExtensionEmbed(client=self.bot, title="Extensions", color=Color.blue())
+        embed = ExtensionEmbed(client=self.bot, title="Extensions", color=Color.dark_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
@@ -25,7 +25,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def reload(self, interaction: Interaction, extension: str | None = None, sync: bool = True) -> None:
         """Reload the Specified or All Extensions."""
-        embed = ExtensionEmbed(client=self.bot, title="Reloading...", color=Color.blue())
+        embed = ExtensionEmbed(client=self.bot, title="Reloading...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
         if extension is None:
@@ -44,7 +44,7 @@ class Develop(commands.Cog):
             await interaction.edit_original_response(embed=embed)
             return
 
-        embed = ExtensionEmbed(client=self.bot, title="Syncing...", color=Color.blue())
+        embed = ExtensionEmbed(client=self.bot, title="Syncing...", color=Color.light_grey())
         await interaction.edit_original_response(embed=embed)
         await self.bot.command_sync()
 
@@ -56,7 +56,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def sync(self, interaction: Interaction, force: bool = False) -> None:
         """Sync All Commands."""
-        embed = CommandMapEmbed(client=self.bot, title="Syncing...", color=Color.blue())
+        embed = CommandMapEmbed(client=self.bot, title="Syncing...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_sync(force=force)
 
@@ -67,7 +67,7 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def register(self, interaction: Interaction) -> None:
         """Register All Commands for Command Map."""
-        embed = CommandMapEmbed(client=self.bot, title="Registering...", color=Color.blue())
+        embed = CommandMapEmbed(client=self.bot, title="Registering...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.bot.command_map()
 
@@ -78,14 +78,14 @@ class Develop(commands.Cog):
     @utils.developer_only()
     async def map(self, interaction: Interaction) -> None:
         """Show Command Map."""
-        embed = CommandMapEmbed(client=self.bot, title="Command Map", color=Color.blue())
+        embed = CommandMapEmbed(client=self.bot, title="Command Map", color=Color.dark_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command()
     @utils.developer_only()
     async def commands(self, interaction: Interaction) -> None:
         """Show All Commands for each Guild."""
-        embed = Embed(title="Command List", color=Color.blue())
+        embed = Embed(title="Command List", color=Color.dark_grey())
         for guild in (None, *self.bot.guilds):
             app_cmds = utils.expand_commands(await self.bot.tree.fetch_commands(guild=guild))
             app_cmds = {app_cmd for app_cmd in app_cmds if app_cmd.type == AppCommandType.chat_input}
@@ -111,4 +111,4 @@ class Develop(commands.Cog):
 
 
 async def setup(bot: CielType) -> None:
-    await bot.add_cog(Develop(bot))
+    await bot.add_cog(DevelopCog(bot))

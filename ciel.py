@@ -3,9 +3,9 @@ from collections.abc import Generator, Iterable, Mapping
 from pathlib import Path
 from types import MappingProxyType
 
-from discord import DiscordException, Intents, Message, app_commands
+from discord import Client, DiscordException, Intents, Interaction, Message, app_commands
 from discord.abc import Snowflake
-from discord.app_commands import AppCommand, AppCommandGroup, Argument, Command, Group
+from discord.app_commands import AppCommand, AppCommandError, AppCommandGroup, Argument, Command, Group
 from discord.enums import AppCommandType
 from discord.ext import commands
 
@@ -15,15 +15,13 @@ IGNORE_EXTENSION_FILES = []
 
 
 class CielTree(app_commands.CommandTree):
-    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
-        super().__init__(*args, **kwargs)
+    def __init__(self, client: Client, /, **kwargs: object) -> None:  # noqa: ARG002
+        super().__init__(client)
         self._command_map: dict[Command, AppCommand | AppCommandGroup] = {}
 
-    async def sync(self, *, guild: Snowflake | None = None) -> list[AppCommand]:
-        utils.logger.info(f"Syncing Commands (Guild: {guild})")
-        app_cmds = await super().sync(guild=guild)
-        await self.map_commands(guild=guild)
-        return app_cmds
+    async def on_error(self, interaction: Interaction, error: AppCommandError) -> None:
+        kwargs = {"command": interaction.command.qualified_name if interaction.command else None}
+        self.client.dispatch("interaction_error", interaction, error, **kwargs)
 
     @property
     def command_map(self) -> Mapping[Command, AppCommand | AppCommandGroup]:
@@ -50,11 +48,17 @@ class CielTree(app_commands.CommandTree):
 
             self._command_map[cmd] = app_cmd
 
-    async def map_commands(self, guild: Snowflake | None = None) -> None:
+    async def map_commands(self, *, guild: Snowflake | None = None) -> None:
         utils.logger.info(f"Mapping Commands (Guild: {guild})")
         cmds = self.get_commands(guild=guild, type=AppCommandType.chat_input)
         app_cmds = await self.fetch_commands(guild=guild)
         self._mapping(cmds, app_cmds)
+
+    async def sync(self, *, guild: Snowflake | None = None) -> list[AppCommand]:
+        utils.logger.info(f"Syncing Commands (Guild: {guild})")
+        app_cmds = await super().sync(guild=guild)
+        await self.map_commands(guild=guild)
+        return app_cmds
 
     def clear_command_map(self) -> None:
         utils.logger.info("Clearing Command Map")
@@ -65,9 +69,13 @@ class CielTree(app_commands.CommandTree):
 
 
 class Ciel(commands.Bot):
-    tree: CielTree  # pyright: ignore[reportIncompatibleMethodOverride]
-
-    def __init__(self, intents: Intents | None = None, sync: bool = False, develop: bool = False, **options) -> None:  # noqa: ANN003, ARG002
+    def __init__(
+        self,
+        intents: Intents | None = None,
+        sync: bool = False,
+        develop: bool = False,
+        **kwargs: object,  # noqa: ARG002
+    ) -> None:
         if intents is None:
             intents = Intents.default()
         super().__init__(command_prefix="", help_command=None, tree_cls=CielTree, intents=intents)
@@ -75,7 +83,11 @@ class Ciel(commands.Bot):
         self.develop = develop
         self.develop_guild = None
 
-    def run(self, token: str = "", **options) -> None:  # noqa: ANN003, ARG002
+    @property
+    def tree(self) -> CielTree:  # pyright: ignore[reportIncompatibleMethodOverride]
+        return super().tree  # pyright: ignore[reportReturnType]
+
+    def run(self, token: str = "", /, **kwargs: object) -> None:  # noqa: ARG002
         utils.setup_logging(self.develop)
         if not token:
             token = os.getenv("DISCORD_TOKEN", "")
