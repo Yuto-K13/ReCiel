@@ -12,6 +12,14 @@ discord.py で構築された、多目的で拡張可能な Discord ボットで
 - **/help** : コマンド一覧・詳細表示
 - **エラー通知** : コマンド実行時のエラーをEmbedで通知
 
+### 🎵 音楽 (Music)
+
+Youtubeなどの動画URLから音声を再生する機能
+
+- **/play [URL]** : 指定した動画URLの音声を再生
+- **/queue** : 再生キューの表示
+- **/track** : 現在再生中のトラック情報表示
+
 ### 👑 開発者用 (Develop)
 
 Botのオーナーのみが使用できる機能
@@ -71,6 +79,13 @@ uv run python main.py
 │   │   ├── __init__.py   # 初期化処理
 │   │   ├── core.py       # 主要処理
 │   │   └── embed.py      # 専用Embed
+│   ├── music/            # 音楽用コマンド（サブディレクトリ）
+│   │   ├── __init__.py   # 初期化処理
+│   │   ├── core.py       # 主要処理
+│   │   ├── embed.py      # 専用Embed
+│   │   ├── error.py      # 専用エラークラス
+│   │   ├── model.py      # データモデル
+│   │   └── view.py       # 専用View
 │   ├── error.py       # エラーハンドリング
 │   └── general.py     # 一般コマンド
 ├── utils/             # ユーティリティ（補助機能）ディレクトリ
