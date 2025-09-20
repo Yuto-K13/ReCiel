@@ -77,9 +77,11 @@ uv run python main.py
 │   ├── __init__.py    # 初期化処理
 │   ├── commands.py    # コマンド関連機能
 │   ├── decorators.py  # コマンド用デコレーター
+│   ├── embed.py       # Embed関連
 │   ├── error.py       # エラーハンドリング補助
 │   ├── logging.py     # ロギング機能
-│   └── types.py       # 型アノテーション
+│   ├── types.py       # 型アノテーション
+│   └── view.py        # View関連
 ├── .env            # 環境変数ファイル (トークンなど)
 ├── .gitignore      # Gitで無視するファイル
 ├── main.py         # メインファイル
