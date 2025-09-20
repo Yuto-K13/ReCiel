@@ -139,6 +139,7 @@ class MusicCog(commands.Cog, name="Music"):
         return state
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def connect(self, interaction: Interaction) -> None:
         """Voice Channelに接続"""
         embed = Embed(title="Connecting...", color=Color.light_grey())
@@ -146,6 +147,7 @@ class MusicCog(commands.Cog, name="Music"):
         await self.get_state(interaction, allow_same_channel=False, allow_edit_message=True)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def disconnect(self, interaction: Interaction) -> None:
         """Voice Channelから切断"""
         state = await self.get_state(interaction, allow_connect=False)
@@ -161,6 +163,7 @@ class MusicCog(commands.Cog, name="Music"):
 
     @app_commands.command()
     @app_commands.describe(url="再生したい動画のURL")
+    @app_commands.guild_only()
     async def play(self, interaction: Interaction, url: str) -> None:
         """URLから曲をキューに追加"""
         embed = Embed(title="Fetching...", color=Color.light_grey())
@@ -175,6 +178,7 @@ class MusicCog(commands.Cog, name="Music"):
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def skip(self, interaction: Interaction) -> None:
         """再生中の曲をスキップ"""
         state = await self.get_state(interaction, allow_connect=False)
@@ -188,6 +192,7 @@ class MusicCog(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def loop(self, interaction: Interaction) -> None:
         """キューのループ再生を切り替え"""
         state = await self.get_state(interaction, allow_connect=False)
@@ -203,6 +208,7 @@ class MusicCog(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def queue(self, interaction: Interaction) -> None:
         """キューの情報を表示"""
         state = await self.get_state(interaction, allow_connect=False)
@@ -214,6 +220,7 @@ class MusicCog(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed, view=view)
 
     @app_commands.command()
+    @app_commands.guild_only()
     async def track(self, interaction: Interaction) -> None:
         """キューの詳細情報を表示"""
         state = await self.get_state(interaction, allow_connect=False)
