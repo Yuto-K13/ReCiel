@@ -1,7 +1,7 @@
 import asyncio
 import collections
 import datetime
-from collections.abc import Iterator
+from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from typing import Self
 
@@ -70,6 +70,9 @@ class Track:
         self.source = source
         self.headers = headers
 
+    def __hash__(self) -> int:
+        return hash((self.user, self.source))
+
     @property
     def title_markdown(self) -> str:
         title = self.title or "Unknown"
@@ -96,7 +99,7 @@ class Track:
         return FFmpegPCMAudio(self.source, before_options=" ".join(before_options), options=" ".join(options))
 
 
-class YTDLPTrack(Track):
+class YouTubeDLPTrack(Track):
     @staticmethod
     def _download(url: str) -> dict:
         try:
@@ -155,30 +158,28 @@ class MusicQueue(asyncio.Queue):
         self._playing = asyncio.Event()
 
     def _init(self, maxsize) -> None:  # noqa: ANN001, ARG002
-        self._queue: collections.deque[Track | None] = collections.deque()
+        self._queue: collections.deque[Track] = collections.deque()
 
-    def _get(self) -> Track | None:
+    def _get(self) -> Track:
         return self._queue.popleft()
 
-    def _put(self, item: Track | None) -> None:
+    def _put(self, item: Track) -> None:
         self._queue.append(item)
 
-    def get_nowait(self) -> Track | None:
-        self._current = super().get_nowait()
+    def get_nowait(self) -> Track:
+        track: Track = super().get_nowait()
+        self._current = track
         self._playing.clear()
-        return self._current
+        return track
 
-    def __getitem__(self, idx: int) -> Track | None:
+    def __getitem__(self, idx: int) -> Track:
         return self._queue[idx]
 
-    def __setitem__(self, idx: int, value: Track | None) -> None:
+    def __setitem__(self, idx: int, value: Track) -> None:
         self._queue[idx] = value
 
     def __delitem__(self, idx: int) -> None:
         del self._queue[idx]
-
-    def __iter__(self) -> Iterator[Track | None]:
-        return iter(self._queue)
 
     def __hash__(self) -> int:
         return hash((self._queue_loop, self._current, *self._queue))
@@ -194,6 +195,13 @@ class MusicQueue(asyncio.Queue):
     @property
     def playing(self) -> bool:
         return not self._playing.is_set()
+
+    def all(self, current: bool = True) -> Generator[Track]:
+        if current and self._current is not None:
+            yield self._current
+        for track in self._queue:
+            if track is not None:
+                yield track
 
     def toggle(self) -> bool:
         self._queue_loop = not self._queue_loop
@@ -308,11 +316,20 @@ class MusicState:
         if self.audio_loop.is_running():
             self.audio_loop.cancel()
 
-    def skip(self) -> None:
-        if self.is_connected():
-            self.voice.stop()
+    def skip(self) -> Track:
+        if not self.is_connected():
+            raise error.NotConnectedError
+        track = self.queue.current
+        if track is None:
+            raise error.NoTrackPlayingError
 
-    def next(self, error: Exception | None) -> None:  # noqa: ARG002
+        self.voice.stop()
+        return track
+
+    def next(self, error: Exception | None) -> None:
+        if error is not None:
+            track = self.queue.current
+            utils.logger.exception(f"Error: {track.title if track is not None else 'Unknown Track'}", exc_info=error)
         self.queue.finish()
 
     async def reset_timer(self) -> None:
