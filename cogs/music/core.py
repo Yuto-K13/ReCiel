@@ -8,6 +8,7 @@ from utils.types import CielType
 from . import error
 from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
 from .model import MusicState, YouTubeDLPTrack
+from .view import QueueTracksView, QueueView
 
 
 class MusicCog(commands.Cog, name="Music"):
@@ -201,12 +202,25 @@ class MusicCog(commands.Cog, name="Music"):
 
     @app_commands.command()
     async def queue(self, interaction: Interaction) -> None:
+        """キューの情報を表示"""
+        state = await self.get_state(interaction, allow_connect=False)
+        if state is None or not state.is_connected():
+            raise error.NotConnectedError
+
+        view = QueueView(interaction, state)
+        embed = view.set_embed(title=f"Queue for {state.guild.name}", color=Color.blue())
+        await interaction.response.send_message(embed=embed, view=view)
+
+    @app_commands.command()
+    async def track(self, interaction: Interaction) -> None:
         """キューの詳細情報を表示"""
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
             raise error.NotConnectedError
-        embed = QueueEmbed(queue=state.queue, title=f"Queue for {state.guild.name}", color=Color.blue())
-        await interaction.response.send_message(embed=embed)
+
+        view = QueueTracksView(interaction, state)
+        embed = view.set_embed(color=Color.blue())
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
 async def setup(bot: CielType) -> None:
