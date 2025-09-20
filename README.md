@@ -8,17 +8,25 @@ discord.py で構築された、多目的で拡張可能な Discord ボットで
 
 ### 🛠️ 汎用 (General)
 
-- **/ping** : 応答速度の表示
-- **/help** : コマンド一覧・詳細表示
+- **`/ping`** : 応答速度の表示
+- **`/help`** : コマンド一覧・詳細表示
 - **エラー通知** : コマンド実行時のエラーをEmbedで通知
+
+### 🎵 音楽 (Music)
+
+Youtubeなどの動画URLから音声を再生する機能
+
+- **`/play <url>`** : 指定した動画URLの音声を再生
+- **`/queue`** : キューの情報を表示
+- **`/track`** : キューの詳細な情報を表示
 
 ### 👑 開発者用 (Develop)
 
 Botのオーナーのみが使用できる機能
 
-- **/reload** : extensionのホットリロード
-- **/sync** : 手動でのコマンド同期
-- **/map** : コマンド情報の詳細確認
+- **`/reload`** : extensionのホットリロード
+- **`/sync`** : 手動でのコマンド同期
+- **`/map`** : コマンド情報の詳細確認
 
 ## 🚀 導入方法 (Getting Started)
 
@@ -27,6 +35,8 @@ Botのオーナーのみが使用できる機能
 - Python 3.13 以上
 - [uv](https://github.com/astral-sh/uv) (高速なPythonパッケージインストーラー兼リゾルバー)
 - Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications)から取得可能)
+- Google API Key ([Google Cloud Platform](https://console.cloud.google.com)から取得可能 以下のAPIを有効化)
+  - Youtube Data API v3
 
 ### インストール (Installation)
 
@@ -45,10 +55,11 @@ Botのオーナーのみが使用できる機能
     ```
 
 3. **環境変数の設定**
-    `.env` ファイルを作成し、Discord Botのトークンを記述します。
+    `.env` ファイルを作成し、Discord BotのトークンとGoogle APIのキーを記述します。
 
     ```env
     DISCORD_TOKEN = あなたのDiscord Bot Token
+    GOOGLE_API_KEY = あなたのGoogle API Key
     ```
 
 ## ▶️ 使い方 (Usage)
@@ -71,6 +82,13 @@ uv run python main.py
 │   │   ├── __init__.py   # 初期化処理
 │   │   ├── core.py       # 主要処理
 │   │   └── embed.py      # 専用Embed
+│   ├── music/            # 音楽用コマンド（サブディレクトリ）
+│   │   ├── __init__.py   # 初期化処理
+│   │   ├── core.py       # 主要処理
+│   │   ├── embed.py      # 専用Embed
+│   │   ├── error.py      # 専用エラークラス
+│   │   ├── model.py      # データモデル
+│   │   └── view.py       # 専用View
 │   ├── error.py       # エラーハンドリング
 │   └── general.py     # 一般コマンド
 ├── utils/             # ユーティリティ（補助機能）ディレクトリ
@@ -97,11 +115,11 @@ uv run python main.py
 
 `cogs/develop.py` には、Bot開発・運用を支援する以下のコマンドが実装されています。
 
-- **/extensions** : 現在ロードされている拡張の一覧を表示します。
-- **/reload [extension] [sync]** : 指定した拡張、または全拡張をリロードし、必要に応じてコマンド同期も行います。
-- **/sync [force]** : すべてのコマンドをDiscordに同期します。
-- **/register** : `Command`と`AppCommand`の関係を再登録します。
-- **/map** : 現在の`Command`と`AppCommand`の対応状況を表示します。
+- **`/extensions`** : 現在ロードされている拡張の一覧を表示します
+- **`/reload [extension] [sync]`** : 指定(または全て)のエクステンションをリロード その後必要に応じてコマンドを同期します
+- **`/sync [force]`** : 全てのコマンドをDiscordに同期します
+- **`/register`** : `Command`と`AppCommand`の関係を再登録します
+- **`/map`** : 現在の`Command`と`AppCommand`の対応状況を表示します
 
 ### 環境ファイル `.env`
 
@@ -110,6 +128,7 @@ Botのトークンに加えて `.env` ファイルには開発者用の情報を
 #### 必須情報
 
 - `DISCORD_TOKEN` : 本番用Botトークン
+- `GOOGLE_API_KEY` : 有効化されたGoole API Key
 
 #### 開発者用情報
 
@@ -122,4 +141,4 @@ Botのトークンに加えて `.env` ファイルには開発者用の情報を
 `main.py` 実行時に以下のオプションを指定できます。
 
 - `--develop` : 開発モードで起動。開発用Botトークン・ギルドを利用し、コマンド同期が即座に反映されます。
-- `--sync` : 起動時にすべてのコマンドをDiscordに同期します。
+- `--sync` : 起動時に全てのコマンドをDiscordに同期します。
