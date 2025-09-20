@@ -7,10 +7,10 @@ from utils.types import CielType
 
 from . import error
 from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
-from .model import MusicState, YTDLPTrack
+from .model import MusicState, YouTubeDLPTrack
 
 
-class Music(commands.Cog):
+class MusicCog(commands.Cog, name="Music"):
     def __init__(self, bot: CielType) -> None:
         self.bot = bot
         self.states: dict[int, MusicState] = {}
@@ -138,7 +138,7 @@ class Music(commands.Cog):
     @app_commands.command()
     async def connect(self, interaction: Interaction) -> None:
         """Voice Channelに接続"""
-        embed = Embed(title="Connecting...", color=Color.blue())
+        embed = Embed(title="Connecting...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
         await self.get_state(interaction, allow_same_channel=False, allow_edit_message=True)
 
@@ -160,14 +160,14 @@ class Music(commands.Cog):
     @app_commands.describe(url="再生したい動画のURL")
     async def play(self, interaction: Interaction, url: str) -> None:
         """URLから曲をキューに追加"""
-        embed = Embed(title="Fetching Track...", color=Color.blue())
+        embed = Embed(title="Fetching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
 
         state = await self.get_state(interaction)
         await state.reset_timer()
 
-        track = await YTDLPTrack.download(interaction.user, url)
-        embed = TrackEmbed(track=track, title="Added to Queue", color=Color.green())
+        track = await YouTubeDLPTrack.download(interaction.user, url)
+        embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
         await state.queue.put(track)
         await interaction.edit_original_response(embed=embed)
 
@@ -180,11 +180,8 @@ class Music(commands.Cog):
         if state.get_voice_channel(interaction) != state.voice_channel:
             raise error.UserNotInSameChannelError
 
-        track = state.queue.current
-        if track is None:
-            raise error.NoTrackPlayingError
-        state.skip()
-        embed = TrackEmbed(track=track, title="Skipped!", color=Color.green())
+        track = state.skip()
+        embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
@@ -197,9 +194,9 @@ class Music(commands.Cog):
             raise error.UserNotInSameChannelError
 
         if state.queue.toggle():
-            embed = Embed(title="Loop Enabled!", color=Color.green())
+            embed = QueueEmbed(state.queue, title="Loop Enabled", color=Color.green())
         else:
-            embed = Embed(title="Loop Disabled!", color=Color.red())
+            embed = QueueEmbed(state.queue, title="Loop Disabled", color=Color.red())
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
@@ -213,4 +210,4 @@ class Music(commands.Cog):
 
 
 async def setup(bot: CielType) -> None:
-    await bot.add_cog(Music(bot))
+    await bot.add_cog(MusicCog(bot))

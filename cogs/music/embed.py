@@ -42,13 +42,13 @@ class VoiceChannelEmbed(Embed):
 
     def format(self) -> None:
         if self.before is not None and self.after is not None:
-            title = "Moved between Voice Channels"
+            title = "Moved between the Voice Channels"
             channel = f"{self.before.mention} -> {self.after.mention}"
         elif self.before is not None:
-            title = "Disconnected from Voice Channel"
+            title = "Disconnected from the Voice Channel"
             channel = self.before.mention
         elif self.after is not None:
-            title = "Connected to Voice Channel"
+            title = "Connected to the Voice Channel"
             channel = self.after.mention
         else:
             raise error.MusicError("Before and After are both None.")
@@ -129,7 +129,7 @@ class QueueEmbed(Embed):
         self.format()
 
     def format(self) -> None:
-        text = "No Music"
+        text = "No Track"
         if self.queue.current is not None:
             self.set_thumbnail(url=self.queue.current.thumbnail)
             text = f"{self.queue.current.title_markdown}\nRequested by **{self.queue.current.user.display_name}**"
@@ -137,12 +137,12 @@ class QueueEmbed(Embed):
 
         lines = [
             f"{track.title_markdown} | Requested by **{track.user.display_name}**"
-            for track in self.queue
+            for track in self.queue.all(current=False)
             if track is not None
         ]
         if not lines:
-            lines.append("No Music")
-        self.add_field(name="Next Queue", value="\n".join(lines), inline=False)
+            lines.append("No Track")
+        self.add_field(name="Tracks in the Queue", value="\n".join(lines), inline=False)
 
         queue_loop = "✔️" if self.queue.queue_loop else "❌"
         self.set_footer(text=f"Loop: {queue_loop}")
