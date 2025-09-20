@@ -22,13 +22,13 @@ class MusicCog(commands.Cog, name="Music"):
                 continue
 
             embed = VoiceChannelEmbed(
-                before=state.voice_channel,
+                before=state.voice.channel,
                 user=self.bot.user,
                 reason="Unload Cog.",
                 color=Color.green(),
             )
             await state.disconnect()
-            await state.interaction.followup.send(embed=embed)
+            await state.message.reply(embed=embed)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState) -> None:  # noqa: ARG002
@@ -41,18 +41,18 @@ class MusicCog(commands.Cog, name="Music"):
         if not state.is_connected():
             state.cancel()
             return
-        for user in state.voice_channel.members:
+        for user in state.voice.channel.members:
             if not user.bot:
                 return
 
         embed = VoiceChannelEmbed(
-            before=state.voice_channel,
+            before=state.voice.channel,
             user=self.bot.user,
             reason="All Users have Left.",
             color=Color.green(),
         )
         await state.disconnect()
-        await state.interaction.followup.send(embed=embed)
+        await state.message.reply(embed=embed)
 
     @commands.Cog.listener()
     async def on_music_timeout(self, state: MusicState) -> None:
@@ -60,13 +60,13 @@ class MusicCog(commands.Cog, name="Music"):
             return
 
         embed = VoiceChannelEmbed(
-            before=state.voice_channel,
+            before=state.voice.channel,
             user=self.bot.user,
             reason="Timeout.",
             color=Color.green(),
         )
         await state.disconnect()
-        await state.interaction.followup.send(embed=embed)
+        await state.message.reply(embed=embed)
 
     @overload
     async def get_state(
@@ -110,16 +110,16 @@ class MusicCog(commands.Cog, name="Music"):
         if not state.is_connected():
             await state.connect(interaction)
             embed = VoiceChannelEmbed(
-                after=state.voice_channel,
+                after=state.voice.channel,
                 user=interaction.user,
                 color=Color.green(),
             )
-        elif state.get_voice_channel(interaction) != state.voice_channel:
-            before = state.voice_channel
+        elif state.get_voice_channel(interaction) != state.voice.channel:
+            before = state.voice.channel
             await state.move(interaction)
             embed = VoiceChannelEmbed(
                 before=before,
-                after=state.voice_channel,
+                after=state.voice.channel,
                 user=interaction.user,
                 color=Color.green(),
             )
@@ -130,10 +130,12 @@ class MusicCog(commands.Cog, name="Music"):
 
         if not interaction.response.is_done():
             await interaction.response.send_message(embed=embed)
+            message = await interaction.original_response()
         elif allow_edit_message:
-            await interaction.edit_original_response(embed=embed)
+            message = await interaction.edit_original_response(embed=embed)
         else:
-            await interaction.followup.send(embed=embed)
+            message = await interaction.followup.send(embed=embed, wait=True)
+        state.message = message
         return state
 
     @app_commands.command()
@@ -149,10 +151,10 @@ class MusicCog(commands.Cog, name="Music"):
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
             raise error.NotConnectedError
-        if state.get_voice_channel(interaction) != state.voice_channel:
+        if state.get_voice_channel(interaction) != state.voice.channel:
             raise error.UserNotInSameChannelError
 
-        channel = state.voice_channel
+        channel = state.voice.channel
         await state.disconnect()
         embed = VoiceChannelEmbed(before=channel, user=interaction.user, color=Color.green())
         await interaction.response.send_message(embed=embed)
@@ -178,7 +180,7 @@ class MusicCog(commands.Cog, name="Music"):
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
             raise error.NotConnectedError
-        if state.get_voice_channel(interaction) != state.voice_channel:
+        if state.get_voice_channel(interaction) != state.voice.channel:
             raise error.UserNotInSameChannelError
 
         track = state.skip()
@@ -191,7 +193,7 @@ class MusicCog(commands.Cog, name="Music"):
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
             raise error.NotConnectedError
-        if state.get_voice_channel(interaction) != state.voice_channel:
+        if state.get_voice_channel(interaction) != state.voice.channel:
             raise error.UserNotInSameChannelError
 
         if state.queue.toggle():
@@ -208,7 +210,7 @@ class MusicCog(commands.Cog, name="Music"):
             raise error.NotConnectedError
 
         view = QueueView(interaction, state)
-        embed = view.set_embed(title=f"Queue for {state.guild.name}", color=Color.blue())
+        embed = view.set_embed(title=f"Queue for {interaction.guild.name}", color=Color.blue())  # pyright: ignore[reportOptionalMemberAccess]
         await interaction.response.send_message(embed=embed, view=view)
 
     @app_commands.command()

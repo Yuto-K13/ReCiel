@@ -7,8 +7,7 @@ from typing import Self
 
 import yt_dlp
 import yt_dlp.utils
-from discord import AudioSource, FFmpegPCMAudio, Guild, Interaction, Member, User, VoiceClient
-from discord.abc import Messageable, PrivateChannel
+from discord import AudioSource, FFmpegPCMAudio, Interaction, Member, Message, User, VoiceClient
 from discord.channel import VocalGuildChannel
 from discord.ext import tasks
 
@@ -233,6 +232,7 @@ class MusicState:
 
     def __init__(self, bot: CielType) -> None:
         self._bot = bot
+        self._message: Message | None = None
         self._interaction: Interaction | None = None
         self._voice: VoiceClient | None = None
         self.queue = MusicQueue()
@@ -241,33 +241,20 @@ class MusicState:
         self.cancel()
 
     @property
-    def interaction(self) -> Interaction:
-        if self._interaction is None:
-            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.interaction")
-        return self._interaction
+    def message(self) -> Message:
+        if self._message is None:
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.message") from error.NotConnectedError
+        return self._message
+
+    @message.setter
+    def message(self, message: Message) -> None:
+        self._message = message
 
     @property
     def voice(self) -> VoiceClient:
         if not self.is_connected():
             raise utils.InvalidAttributeError(f"{self.__class__.__name__}.voice") from error.NotConnectedError
         return self._voice  # pyright: ignore[reportReturnType]
-
-    @property
-    def text_channel(self) -> Messageable:
-        channel = self.interaction.channel
-        if not isinstance(channel, Messageable) or isinstance(channel, PrivateChannel):
-            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.text_channel")
-        return channel
-
-    @property
-    def voice_channel(self) -> VocalGuildChannel:
-        return self.voice.channel
-
-    @property
-    def guild(self) -> Guild:
-        if self.interaction.guild is None:
-            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.guild")
-        return self.interaction.guild
 
     def is_connected(self) -> bool:
         return self._voice is not None and self._voice.is_connected()
@@ -295,7 +282,7 @@ class MusicState:
 
         if not self.is_connected():
             raise error.NotConnectedError
-        if self.voice_channel == channel:
+        if self.voice.channel == channel:
             raise error.AlreadyConnectedError
 
         self._interaction = interaction
