@@ -40,6 +40,11 @@ class NoTrackPlayingError(MusicError):
         super().__init__(*args, msg="再生中の曲がありません", ignore=True)
 
 
+class QueueChangedError(MusicError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="キューが変更されました\n`Update`ボタンを押してください", ignore=True)
+
+
 class YouTubeDLPError(MusicError):
     def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
         super().__init__(*args, msg=msg or "yt-dlpでエラーが発生しました", ignore=ignore)
