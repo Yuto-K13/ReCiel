@@ -1,10 +1,13 @@
 import asyncio
 import collections
 import datetime
+import os
+import urllib.parse
 from collections.abc import Generator, Iterable
 from concurrent.futures import ProcessPoolExecutor
 from typing import Self
 
+import aiohttp
 import yt_dlp
 import yt_dlp.utils
 from discord import AudioSource, FFmpegPCMAudio, Interaction, Member, Message, User, VoiceChannel, VoiceClient
@@ -189,6 +192,73 @@ class YouTubeDLPTrack(Track):
             options = FFMPEG_OPTIONS.copy()
 
         return super().get_audio_source(before_options=before_options, options=options)
+
+    def set_default_info(self, track: Track) -> Self:
+        self.title = self.title or track.title
+        self.url = self.url or track.url
+        self.channel = self.channel or track.channel
+        self.channel_url = self.channel_url or track.channel_url
+        self.thumbnail = self.thumbnail or track.thumbnail
+        self.duration = self.duration or track.duration
+
+        return self
+
+
+class GoogleSearchTrack(Track):
+    API_KEY = os.getenv("GOOGLE_API_KEY")
+    API_URL = "https://www.googleapis.com/youtube/v3/search"
+
+    @classmethod
+    async def search(cls, user: User | Member, word: str) -> Self:
+        tracks = await cls.searchs(user, word, results=1)
+        return tracks[0]
+
+    @classmethod
+    async def searchs(cls, user: User | Member, word: str, results: int) -> list[Self]:
+        if cls.API_KEY is None:
+            raise error.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
+
+        query = {"part": "snippet", "type": "video", "maxResults": results, "q": word, "key": cls.API_KEY}
+        parse = urllib.parse.urlparse(cls.API_URL)
+        parse = parse._replace(query=urllib.parse.urlencode(query))
+        url = urllib.parse.urlunparse(parse)
+
+        async with aiohttp.ClientSession() as session, session.get(url) as res:
+            infos: dict = await res.json()
+
+        tracks = [cls.from_info(user, info) for info in infos.get("items", [])]
+        if len(tracks) != results:
+            raise error.GoogleAPIError(f"Failed to get Information of Required Quantity. {len(tracks)}/{results}")
+
+        return tracks
+
+    @classmethod
+    def from_info(cls, user: User | Member, info: dict[str, dict]) -> Self:
+        snippet = info.get("snippet", {})
+
+        title = snippet.get("title")
+        video_id = info.get("id", {}).get("videoId")
+        url = f"https://www.youtube.com/watch?v={video_id}" if video_id is not None else None
+
+        channel = snippet.get("channelTitle")
+        channel_id = snippet.get("channelId")
+        channel_url = f"https://www.youtube.com/channel/{channel_id}" if channel_id is not None else None
+
+        thumbnails: dict[str, dict] = snippet.get("thumbnails", {})
+        for key in ("high", "medium", "default"):
+            thumbnail = thumbnails.get(key, {}).get("url")
+            if thumbnail is not None:
+                break
+        else:
+            thumbnail = None
+
+        return cls(user=user, title=title, url=url, channel=channel, channel_url=channel_url, thumbnail=thumbnail)
+
+    async def download(self) -> YouTubeDLPTrack:
+        if self.url is None:
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.url")
+        track = await YouTubeDLPTrack.download(self.user, self.url)
+        return track.set_default_info(self)
 
 
 class MusicQueue(asyncio.Queue):

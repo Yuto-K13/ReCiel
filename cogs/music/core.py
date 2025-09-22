@@ -7,7 +7,7 @@ from utils.types import CielType
 
 from . import error
 from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
-from .model import MusicState, YouTubeDLPTrack
+from .model import GoogleSearchTrack, MusicState, YouTubeDLPTrack
 from .view import QueueTracksView, QueueView
 
 
@@ -175,6 +175,26 @@ class MusicCog(commands.Cog, name="Music"):
         track = await YouTubeDLPTrack.download(interaction.user, url)
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
         await state.queue.put(track)
+        await interaction.edit_original_response(embed=embed)
+
+    @app_commands.command()
+    @app_commands.describe(word="検索ワード")
+    async def search(self, interaction: Interaction, word: str) -> None:
+        """YouTubeで曲を検索してキューに追加"""
+        embed = Embed(title="Searching...", color=Color.light_grey())
+        await interaction.response.send_message(embed=embed)
+
+        state = await self.get_state(interaction)
+        await state.reset_timer()
+        track = await GoogleSearchTrack.search(interaction.user, word)
+        embed = TrackEmbed(track=track, title="Fetching the Track...", color=Color.light_grey())
+        await interaction.edit_original_response(embed=embed)
+
+        await state.reset_timer()
+        track = await track.download()
+
+        await state.queue.put(track)
+        embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command()
