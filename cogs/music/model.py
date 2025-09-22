@@ -7,7 +7,7 @@ from typing import Self
 
 import yt_dlp
 import yt_dlp.utils
-from discord import AudioSource, FFmpegPCMAudio, Interaction, Member, Message, User, VoiceClient
+from discord import AudioSource, FFmpegPCMAudio, Interaction, Member, Message, User, VoiceChannel, VoiceClient
 from discord.channel import VocalGuildChannel
 from discord.ext import tasks
 
@@ -270,7 +270,7 @@ class MusicState:
             raise error.AlreadyConnectedError
 
         self._interaction = interaction
-        self._voice = await channel.connect()
+        self._voice = await channel.connect(self_deaf=True)
         self.audio_loop.start()
 
     async def move(self, interaction: Interaction) -> None:
@@ -323,6 +323,10 @@ class MusicState:
         if self.queue.empty() and not self.queue.playing:
             await self.queue.put(None)
 
+    async def set_status(self, status: str | None) -> None:
+        if isinstance(self.voice.channel, VoiceChannel):
+            await self.voice.channel.edit(status=status)
+
     @tasks.loop()
     async def audio_loop(self) -> None:
         try:
@@ -335,9 +339,11 @@ class MusicState:
         if track is None:
             self.queue.finish()
             return
-
+        await self.set_status(f"🎵 Now Playing {track.title or 'Unknown Track'}")
         self.voice.play(track.get_audio_source(), after=self.next)
         await self.queue.wait()
+        await self.set_status(None)
+
         if self.queue.queue_loop:
             await self.queue.put(track)
 
