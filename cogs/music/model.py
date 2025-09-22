@@ -1,7 +1,7 @@
 import asyncio
 import collections
 import datetime
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from concurrent.futures import ProcessPoolExecutor
 from typing import Self
 
@@ -54,10 +54,7 @@ class Track:
         thumbnail: str | None = None,
         duration: datetime.timedelta | None = None,
         source: str | None = None,
-        headers: list[str] | None = None,
     ) -> None:
-        if headers is None:
-            headers = []
         self.user = user
         self.title = title
         self.url = url
@@ -67,7 +64,6 @@ class Track:
         self.duration = duration
 
         self.source = source
-        self.headers = headers
 
     def __hash__(self) -> int:
         return hash((self.user, self.source))
@@ -86,16 +82,20 @@ class Track:
             return channel
         return f"[{channel}]({self.channel_url})"
 
-    def get_audio_source(self) -> AudioSource:
+    def get_audio_source(
+        self,
+        *,
+        before_options: Iterable[str] | str | None = None,
+        options: Iterable[str] | str | None = None,
+    ) -> AudioSource:
         if self.source is None:
             raise utils.InvalidAttributeError(f"{self.__class__.__name__}.source")
-        before_options = FFMPEG_BEFORE_OPTIONS.copy()
-        options = FFMPEG_OPTIONS.copy()
-        if self.headers:
-            headers = "\r\n".join(self.headers)
-            before_options.append(f'-headers "{headers}"')
+        if isinstance(before_options, Iterable) and not isinstance(before_options, str):
+            before_options = " ".join(before_options)
+        if isinstance(options, Iterable) and not isinstance(options, str):
+            options = " ".join(options)
 
-        return FFmpegPCMAudio(self.source, before_options=" ".join(before_options), options=" ".join(options))
+        return FFmpegPCMAudio(self.source, before_options=before_options, options=options)
 
 
 class YouTubeDLPTrack(Track):
@@ -147,6 +147,48 @@ class YouTubeDLPTrack(Track):
             thumbnail=thumbnail,
             duration=duration,
         )
+
+    def __init__(
+        self,
+        user: User | Member,
+        *,
+        title: str | None = None,
+        url: str | None = None,
+        channel: str | None = None,
+        channel_url: str | None = None,
+        thumbnail: str | None = None,
+        duration: datetime.timedelta | None = None,
+        source: str | None = None,
+        headers: list[str] | None = None,
+    ) -> None:
+        super().__init__(
+            user=user,
+            title=title,
+            url=url,
+            channel=channel,
+            channel_url=channel_url,
+            thumbnail=thumbnail,
+            duration=duration,
+            source=source,
+        )
+        if headers is None:
+            headers = []
+        self.headers = headers
+
+    def get_audio_source(
+        self,
+        *,
+        before_options: Iterable[str] | str | None = None,
+        options: Iterable[str] | str | None = None,
+    ) -> AudioSource:
+        if before_options is None:
+            before_options = FFMPEG_BEFORE_OPTIONS.copy()
+            if self.headers:
+                before_options.append(f'-headers "{"\r\n".join(self.headers)}"')
+        if options is None:
+            options = FFMPEG_OPTIONS.copy()
+
+        return super().get_audio_source(before_options=before_options, options=options)
 
 
 class MusicQueue(asyncio.Queue):
