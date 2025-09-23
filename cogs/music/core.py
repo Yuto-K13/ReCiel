@@ -8,7 +8,7 @@ from utils.types import CielType
 from . import error
 from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
 from .model import GoogleSearchTrack, MusicState, YouTubeDLPTrack
-from .view import QueueTracksView, QueueView
+from .view import GoogleSearchView, QueueTracksView, QueueView
 
 
 class MusicCog(commands.Cog, name="Music"):
@@ -196,6 +196,19 @@ class MusicCog(commands.Cog, name="Music"):
         await state.queue.put(track)
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
         await interaction.edit_original_response(embed=embed)
+
+    @app_commands.command(name="search-all")
+    @app_commands.describe(word="検索ワード")
+    async def search_all(self, interaction: Interaction, word: str) -> None:
+        """YouTubeで曲を検索した結果を選択してキューに追加"""
+        embed = Embed(title="Searching...", color=Color.light_grey())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        state = await self.get_state(interaction)
+        await state.reset_timer()
+
+        view = await GoogleSearchView(interaction, state, word).search()
+        embed = view.set_embed(title=f'Search Results for "{word}"', color=Color.light_grey())
+        await interaction.edit_original_response(embed=embed, view=view)
 
     @app_commands.command()
     @app_commands.guild_only()
