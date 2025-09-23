@@ -210,27 +210,38 @@ class GoogleSearchTrack(Track):
 
     @classmethod
     async def search(cls, user: User | Member, word: str) -> Self:
-        tracks = await cls.searchs(user, word, results=1)
+        tracks, _ = await cls.searchs(user, word, results=1)
         return tracks[0]
 
     @classmethod
-    async def searchs(cls, user: User | Member, word: str, results: int) -> list[Self]:
+    async def searchs(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
         if cls.API_KEY is None:
             raise error.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
 
-        query = {"part": "snippet", "type": "video", "maxResults": results, "q": word, "key": cls.API_KEY}
+        query = {
+            "part": "snippet",
+            "type": "video",
+            "maxResults": results,
+            "q": word,
+            "key": cls.API_KEY,
+            "pageToken": token,
+        }
         parse = urllib.parse.urlparse(cls.API_URL)
         parse = parse._replace(query=urllib.parse.urlencode(query))
         url = urllib.parse.urlunparse(parse)
 
         async with aiohttp.ClientSession() as session, session.get(url) as res:
             infos: dict = await res.json()
+        if "error" in infos:
+            error_info: dict = infos["error"]
+            raise error.GoogleAPIError(error_info.get("message"))
 
+        next_token = infos.get("nextPageToken", "")
         tracks = [cls.from_info(user, info) for info in infos.get("items", [])]
         if len(tracks) != results:
             raise error.GoogleAPIError(f"Failed to get Information of Required Quantity. {len(tracks)}/{results}")
 
-        return tracks
+        return tracks, next_token
 
     @classmethod
     def from_info(cls, user: User | Member, info: dict[str, dict]) -> Self:
