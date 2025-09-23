@@ -356,7 +356,6 @@ class MusicState:
     def __init__(self, bot: CielType) -> None:
         self._bot = bot
         self._message: Message | None = None
-        self._interaction: Interaction | None = None
         self._voice: VoiceClient | None = None
         self.queue = MusicQueue()
 
@@ -392,7 +391,6 @@ class MusicState:
         if self.is_connected():
             raise error.AlreadyConnectedError
 
-        self._interaction = interaction
         self._voice = await channel.connect(self_deaf=True)
         self.audio_loop.start()
 
@@ -408,7 +406,6 @@ class MusicState:
         if self.voice.channel == channel:
             raise error.AlreadyConnectedError
 
-        self._interaction = interaction
         await self.voice.move_to(channel)
         if self.audio_loop.is_running():
             self.audio_loop.restart()

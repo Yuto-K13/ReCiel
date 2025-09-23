@@ -243,7 +243,7 @@ class QueueTracksView(utils.CustomView):
 
     async def last(self, interaction: Interaction) -> None:
         self.check_validity(interaction)
-        self.index = len(self.queue) - 1
+        self.index = self.length - 1
         await self.update(interaction)
 
 
