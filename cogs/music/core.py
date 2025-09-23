@@ -179,6 +179,7 @@ class MusicCog(commands.Cog, name="Music"):
 
     @app_commands.command()
     @app_commands.describe(word="検索ワード")
+    @app_commands.guild_only()
     async def search(self, interaction: Interaction, word: str) -> None:
         """YouTubeで曲を検索してキューに追加"""
         embed = Embed(title="Searching...", color=Color.light_grey())
@@ -186,19 +187,20 @@ class MusicCog(commands.Cog, name="Music"):
 
         state = await self.get_state(interaction)
         await state.reset_timer()
+
         track = await GoogleSearchTrack.search(interaction.user, word)
         embed = TrackEmbed(track=track, title="Fetching the Track...", color=Color.light_grey())
         await interaction.edit_original_response(embed=embed)
-
         await state.reset_timer()
-        track = await track.download()
 
-        await state.queue.put(track)
+        track = await track.download()
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
+        await state.queue.put(track)
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command(name="search-all")
     @app_commands.describe(word="検索ワード")
+    @app_commands.guild_only()
     async def search_all(self, interaction: Interaction, word: str) -> None:
         """YouTubeで曲を検索した結果を選択してキューに追加"""
         embed = Embed(title="Searching...", color=Color.light_grey())
