@@ -17,7 +17,7 @@ from discord.ext import tasks
 import utils
 from utils.types import CielType
 
-from . import error
+from . import errors
 
 YTDLP_OPTIONS = {
     "format": "bestaudio/best",
@@ -109,9 +109,9 @@ class YouTubeDLPTrack(Track):
                 info = ydl.extract_info(url, download=False)
                 info = ydl.sanitize_info(info)
         except yt_dlp.utils.DownloadError as e:
-            raise error.DownloadError(str(e)) from e
+            raise errors.DownloadError(str(e)) from e
         except yt_dlp.utils.YoutubeDLError as e:
-            raise error.YouTubeDLPError(str(e)) from e
+            raise errors.YouTubeDLPError(str(e)) from e
         return info  # pyright: ignore[reportReturnType]
 
     @classmethod
@@ -216,7 +216,7 @@ class GoogleSearchTrack(Track):
     @classmethod
     async def searchs(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
         if cls.API_KEY is None:
-            raise error.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
+            raise errors.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
 
         query = {
             "part": "snippet",
@@ -234,14 +234,12 @@ class GoogleSearchTrack(Track):
             infos: dict = await res.json()
         if "error" in infos:
             error_info: dict = infos["error"]
-            raise error.GoogleAPIError(error_info.get("message"))
+            raise errors.SearchError(error_info.get("message"))
 
-        next_token = infos.get("nextPageToken", "")
+        token = infos.get("nextPageToken", "")
         tracks = [cls.from_info(user, info) for info in infos.get("items", [])]
-        if len(tracks) != results:
-            raise error.GoogleAPIError(f"Failed to get Information of Required Quantity. {len(tracks)}/{results}")
 
-        return tracks, next_token
+        return tracks, token
 
     @classmethod
     def from_info(cls, user: User | Member, info: dict[str, dict]) -> Self:
@@ -365,7 +363,7 @@ class MusicState:
     @property
     def message(self) -> Message:
         if self._message is None:
-            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.message") from error.NotConnectedError
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.message") from errors.NotConnectedError
         return self._message
 
     @message.setter
@@ -375,7 +373,7 @@ class MusicState:
     @property
     def voice(self) -> VoiceClient:
         if not self.is_connected():
-            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.voice") from error.NotConnectedError
+            raise utils.InvalidAttributeError(f"{self.__class__.__name__}.voice") from errors.NotConnectedError
         return self._voice  # pyright: ignore[reportReturnType]
 
     def is_connected(self) -> bool:
@@ -384,12 +382,12 @@ class MusicState:
     async def connect(self, interaction: Interaction) -> None:
         channel = self.get_voice_channel(interaction)
         if channel is None:
-            raise error.UserNotInVoiceChannelError
+            raise errors.UserNotInVoiceChannelError
         if channel.guild != interaction.guild:
-            raise error.UserNotInSameGuildError
+            raise errors.UserNotInSameGuildError
 
         if self.is_connected():
-            raise error.AlreadyConnectedError
+            raise errors.AlreadyConnectedError
 
         self._voice = await channel.connect(self_deaf=True)
         self.audio_loop.start()
@@ -397,14 +395,14 @@ class MusicState:
     async def move(self, interaction: Interaction) -> None:
         channel = self.get_voice_channel(interaction)
         if channel is None:
-            raise error.UserNotInVoiceChannelError
+            raise errors.UserNotInVoiceChannelError
         if channel.guild != interaction.guild:
-            raise error.UserNotInSameGuildError
+            raise errors.UserNotInSameGuildError
 
         if not self.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if self.voice.channel == channel:
-            raise error.AlreadyConnectedError
+            raise errors.AlreadyConnectedError
 
         await self.voice.move_to(channel)
         if self.audio_loop.is_running():
@@ -414,7 +412,7 @@ class MusicState:
 
     async def disconnect(self) -> None:
         if not self.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
 
         self.cancel()
         await self.voice.disconnect()
@@ -425,10 +423,10 @@ class MusicState:
 
     def skip(self) -> Track:
         if not self.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         track = self.queue.current
         if track is None:
-            raise error.NoTrackPlayingError
+            raise errors.NoTrackPlayingError
 
         self.voice.stop()
         return track

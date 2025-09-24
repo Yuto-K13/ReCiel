@@ -50,6 +50,16 @@ class GoogleAPIError(MusicError):
         super().__init__(*args, msg=msg or "Google APIでエラーが発生しました", ignore=ignore)
 
 
+class SearchError(GoogleAPIError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="検索中にエラーが発生しました")
+
+
+class SearchCountError(GoogleAPIError):
+    def __init__(self, actual: int, expected: int, *args: object) -> None:
+        super().__init__(*args, msg=f"検索結果の数が一致しません {actual}/{expected}", ignore=True)
+
+
 class YouTubeDLPError(MusicError):
     def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
         super().__init__(*args, msg=msg or "yt-dlpでエラーが発生しました", ignore=ignore)
@@ -57,4 +67,4 @@ class YouTubeDLPError(MusicError):
 
 class DownloadError(YouTubeDLPError):
     def __init__(self, *args: object) -> None:
-        super().__init__(*args, msg="ダウンロード中にエラーが発生しました", ignore=True)
+        super().__init__(*args, msg="ダウンロード中にエラーが発生しました")
