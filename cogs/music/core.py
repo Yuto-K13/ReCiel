@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from utils.types import CielType
 
-from . import error
+from . import errors
 from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
 from .model import GoogleSearchTrack, MusicState, YouTubeDLPTrack
 from .view import GoogleSearchView, QueueTracksView, QueueView
@@ -97,7 +97,7 @@ class MusicCog(commands.Cog, name="Music"):
         allow_edit_message: bool = False,
     ) -> MusicState | None:
         if interaction.guild is None:
-            raise error.UserNotInGuildError
+            raise errors.UserNotInGuildError
         state = self.states.get(interaction.guild.id)
         if not allow_connect:
             return state
@@ -124,7 +124,7 @@ class MusicCog(commands.Cog, name="Music"):
                 color=Color.green(),
             )
         elif not allow_same_channel:
-            raise error.AlreadyConnectedError
+            raise errors.AlreadyConnectedError
         else:
             return state
 
@@ -152,9 +152,9 @@ class MusicCog(commands.Cog, name="Music"):
         """Voice Channelから切断"""
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if state.get_voice_channel(interaction) != state.voice.channel:
-            raise error.UserNotInSameChannelError
+            raise errors.UserNotInSameChannelError
 
         channel = state.voice.channel
         await state.disconnect()
@@ -218,9 +218,9 @@ class MusicCog(commands.Cog, name="Music"):
         """再生中の曲をスキップ"""
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if state.get_voice_channel(interaction) != state.voice.channel:
-            raise error.UserNotInSameChannelError
+            raise errors.UserNotInSameChannelError
 
         track = state.skip()
         embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
@@ -232,9 +232,9 @@ class MusicCog(commands.Cog, name="Music"):
         """キューのループ再生を切り替え"""
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if state.get_voice_channel(interaction) != state.voice.channel:
-            raise error.UserNotInSameChannelError
+            raise errors.UserNotInSameChannelError
 
         if state.queue.toggle():
             embed = QueueEmbed(state.queue, title="Loop Enabled", color=Color.green())
@@ -248,7 +248,7 @@ class MusicCog(commands.Cog, name="Music"):
         """キューの情報を表示"""
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
 
         view = QueueView(interaction, state)
         embed = view.set_embed(title=f"Queue for {interaction.guild.name}", color=Color.blue())  # pyright: ignore[reportOptionalMemberAccess]
@@ -260,7 +260,7 @@ class MusicCog(commands.Cog, name="Music"):
         """キューの詳細情報を表示"""
         state = await self.get_state(interaction, allow_connect=False)
         if state is None or not state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
 
         view = QueueTracksView(interaction, state)
         embed = view.set_embed(color=Color.blue())

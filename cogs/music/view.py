@@ -7,7 +7,7 @@ from discord.ui import Button, Item
 
 import utils
 
-from . import error
+from . import errors
 from .embed import QueueEmbed, TrackEmbed
 from .model import GoogleSearchTrack, MusicState, Track
 
@@ -50,7 +50,7 @@ class QueueView(utils.CustomView):
 
     async def update(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
 
         if not interaction.response.is_done():
             await interaction.response.defer()
@@ -72,9 +72,9 @@ class QueueView(utils.CustomView):
 
     async def toggle_loop(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if self.hash != hash(self.state.queue):
-            raise error.QueueChangedError
+            raise errors.QueueChangedError
 
         if self.state.queue.toggle():
             embed = Embed(title="Loop Enabled", color=Color.green())
@@ -85,9 +85,9 @@ class QueueView(utils.CustomView):
 
     async def skip(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if self.hash != hash(self.state.queue):
-            raise error.QueueChangedError
+            raise errors.QueueChangedError
 
         track = self.state.skip()
         embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
@@ -96,9 +96,9 @@ class QueueView(utils.CustomView):
 
     async def tracks(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if self.hash != hash(self.state.queue):
-            raise error.QueueChangedError
+            raise errors.QueueChangedError
 
         view = QueueTracksView(interaction, self.state)
         embed = view.set_embed(color=Color.blue())
@@ -144,6 +144,10 @@ class QueueTracksView(utils.CustomView):
         self.add_item(self.button_last)
 
     async def on_error(self, interaction: Interaction, error: Exception, item: Item) -> None:
+        if isinstance(error, utils.MissingPermissionsError):
+            await super().on_error(interaction, error, item)
+            return
+
         self.button_remove.disabled = True
         self.button_first.disabled = True
         self.button_back.disabled = True
@@ -171,7 +175,7 @@ class QueueTracksView(utils.CustomView):
 
     async def update(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
 
         if not interaction.response.is_done():
             await interaction.response.defer()
@@ -208,9 +212,9 @@ class QueueTracksView(utils.CustomView):
 
     def check_validity(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if self.hash != hash(self.state.queue):
-            raise error.QueueChangedError
+            raise errors.QueueChangedError
         if interaction.user != self.user:
             raise utils.MissingPermissionsError
 
@@ -258,7 +262,7 @@ class GoogleSearchView(utils.CustomView):
         self.word = word
 
         self.tracks: list[GoogleSearchTrack] = []
-        self.page_token = ""
+        self.token = ""
         self.length = 0
         self.index = 0
         self.items_setup()
@@ -289,23 +293,32 @@ class GoogleSearchView(utils.CustomView):
         self.add_item(self.button_last)
 
     async def on_error(self, interaction: Interaction, error: Exception, item: Item) -> None:
-        self.button_add.disabled = True
+        if isinstance(error, utils.MissingPermissionsError):
+            await super().on_error(interaction, error, item)
+            return
+
         self.button_search.disabled = True
-        self.button_first.disabled = True
-        self.button_back.disabled = True
-        self.button_next.disabled = True
-        self.button_last.disabled = True
+        if not isinstance(error, errors.GoogleAPIError):
+            self.button_add.disabled = True
+            self.button_first.disabled = True
+            self.button_back.disabled = True
+            self.button_next.disabled = True
+            self.button_last.disabled = True
         await self.interaction.edit_original_response(view=self)
 
         await super().on_error(interaction, error, item)
 
     async def search(self) -> Self:
         results = min(self.RESULTS, self.MAX_RESULTS - self.length)
-        tracks, token = await GoogleSearchTrack.searchs(self.user, self.word, results=results, token=self.page_token)
+
+        tracks, token = await GoogleSearchTrack.searchs(self.user, self.word, results=results, token=self.token)
 
         self.tracks.extend(tracks)
-        self.page_token = token
+        self.token = token
         self.length = len(self.tracks)
+
+        if len(tracks) != results:
+            raise errors.SearchCountError(len(tracks), results)
 
         if self.length >= self.MAX_RESULTS:
             self.button_search.disabled = True
@@ -344,7 +357,7 @@ class GoogleSearchView(utils.CustomView):
 
     async def update(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
 
         if not interaction.response.is_done():
             await interaction.response.defer()
@@ -367,7 +380,7 @@ class GoogleSearchView(utils.CustomView):
 
     def check_validity(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
-            raise error.NotConnectedError
+            raise errors.NotConnectedError
         if interaction.user != self.user:
             raise utils.MissingPermissionsError
 
@@ -380,6 +393,7 @@ class GoogleSearchView(utils.CustomView):
         await self.state.reset_timer()
         track = await self.track.download()
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
+
         await self.state.queue.put(track)
         await interaction.edit_original_response(embed=embed)
 

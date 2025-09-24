@@ -5,7 +5,7 @@ from discord import Color, Embed, Interaction, Member, User
 from discord.app_commands import Command, ContextMenu
 from discord.types.embed import EmbedType
 
-from .error import CustomError
+from . import errors
 from .types import CielType
 
 
@@ -74,7 +74,7 @@ class ErrorEmbed(Embed):
 
     def format(self) -> None:
         if self.title is None:
-            if isinstance(self.error, CustomError):
+            if isinstance(self.error, errors.CustomError):
                 self.title = self.error.name
             elif self.error.__class__.__module__ in (None, object.__module__):
                 self.title = self.error.__class__.__name__
