@@ -54,10 +54,11 @@ Botのオーナーのみが使用できる機能
     ```
 
 3. **環境変数の設定**
-    `.env` ファイルを作成し、Discord Botのトークンを記述します。
+    `.env` ファイルを作成し、Discord BotのトークンとGoogle APIのキーを記述します。
 
     ```env
     DISCORD_TOKEN = あなたのDiscord Bot Token
+    GOOGLE_API_KEY = あなたのGoogle API Key
     ```
 
 ## ▶️ 使い方 (Usage)
@@ -128,6 +129,7 @@ Botのトークンに加えて `.env` ファイルには開発者用の情報を
 #### 必須情報
 
 - `DISCORD_TOKEN` : 本番用Botトークン
+- `GOOGLE_API_KEY` : YouTube Data API v3用APIキー
 
 #### 開発者用情報
 
