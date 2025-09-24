@@ -16,6 +16,7 @@ discord.py で構築された、多目的で拡張可能な Discord ボットで
 
 Youtubeなどの動画URLから音声を再生する機能
 
+- **/search [word]** : キーワードで動画を検索し、結果から選択して再生
 - **/play [URL]** : 指定した動画URLの音声を再生
 - **/queue** : 再生キューの表示
 - **/track** : 現在再生中のトラック情報表示
@@ -83,7 +84,7 @@ uv run python main.py
 │   │   ├── __init__.py   # 初期化処理
 │   │   ├── core.py       # 主要処理
 │   │   ├── embed.py      # 専用Embed
-│   │   ├── error.py      # 専用エラークラス
+│   │   ├── errors.py     # 専用エラークラス
 │   │   ├── model.py      # データモデル
 │   │   └── view.py       # 専用View
 │   ├── error.py       # エラーハンドリング
@@ -93,7 +94,7 @@ uv run python main.py
 │   ├── commands.py    # コマンド関連機能
 │   ├── decorators.py  # コマンド用デコレーター
 │   ├── embed.py       # Embed関連
-│   ├── error.py       # エラーハンドリング補助
+│   ├── errors.py      # エラーハンドリング補助
 │   ├── logging.py     # ロギング機能
 │   ├── types.py       # 型アノテーション
 │   └── view.py        # View関連
