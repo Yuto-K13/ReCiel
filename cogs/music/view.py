@@ -310,8 +310,7 @@ class GoogleSearchView(utils.CustomView):
 
     async def search(self) -> Self:
         results = min(self.RESULTS, self.MAX_RESULTS - self.length)
-
-        tracks, token = await GoogleSearchTrack.searchs(self.user, self.word, results=results, token=self.token)
+        tracks, token = await GoogleSearchTrack.search(self.user, self.word, results=results, token=self.token)
 
         self.tracks.extend(tracks)
         self.token = token
@@ -319,7 +318,6 @@ class GoogleSearchView(utils.CustomView):
 
         if len(tracks) != results:
             raise errors.SearchCountError(len(tracks), results)
-
         if self.length >= self.MAX_RESULTS:
             self.button_search.disabled = True
         return self

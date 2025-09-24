@@ -209,12 +209,12 @@ class GoogleSearchTrack(Track):
     API_URL = "https://www.googleapis.com/youtube/v3/search"
 
     @classmethod
-    async def search(cls, user: User | Member, word: str) -> Self:
-        tracks, _ = await cls.searchs(user, word, results=1)
+    async def search_top(cls, user: User | Member, word: str) -> Self:
+        tracks, _ = await cls.search(user, word, results=1)
         return tracks[0]
 
     @classmethod
-    async def searchs(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
+    async def search(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
         if cls.API_KEY is None:
             raise errors.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
 
