@@ -129,15 +129,24 @@ class YouTubeDLPTrack(Track):
         channel = info.get("uploader")
         channel_url = info.get("uploader_url")
         thumbnail = info.get("thumbnail")
-        if duration := info.get("duration"):
+        duration = info.get("duration")
+        if duration is not None:
             duration = datetime.timedelta(seconds=duration)
 
         source = info.get("url")
         headers = []
-        if http_headers := info.get("http_headers"):
+        http_headers = info.get("http_headers")
+        if http_headers is not None:
             headers.extend([f"{key}: {value}" for key, value in http_headers.items()])
-        if cookies := info.get("cookies"):
+        cookies = info.get("cookies")
+        if cookies is not None:
             headers.append(f"Cookie: {cookies}")
+
+        extractor = info.get("extractor")
+        if extractor == "niconico":
+            uploader_id = info.get("uploader_id")
+            if uploader_id is not None and channel_url is None:
+                channel_url = f"https://www.nicovideo.jp/user/{uploader_id}"
 
         return cls(
             user=user,
