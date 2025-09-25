@@ -104,7 +104,7 @@ class MusicCog(commands.Cog, name="Music"):
 
         embed = None
         if state is None:
-            state = MusicState(self.bot)
+            state = MusicState(self.bot, interaction.guild)
             self.states[interaction.guild.id] = state
 
         if not state.is_connected():
