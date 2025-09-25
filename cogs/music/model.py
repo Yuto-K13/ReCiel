@@ -303,6 +303,12 @@ class MusicQueue(asyncio.Queue):
         self._playing.clear()
         return track
 
+    async def put(self, item: Track) -> None:
+        return await super().put(item)
+
+    async def get(self) -> Track:
+        return await super().get()
+
     def __getitem__(self, idx: int) -> Track:
         return self._queue[idx]
 
@@ -367,6 +373,7 @@ class MusicState:
         self._guild = guild
         self._message: Message | None = None
         self._voice: VoiceClient | None = None
+        self.timeout: asyncio.Timeout | None = None
         self.queue = MusicQueue()
 
     def __del__(self) -> None:
@@ -397,6 +404,10 @@ class MusicState:
     def is_connected(self) -> bool:
         return self._voice is not None and self._voice.is_connected()
 
+    async def set_status(self, status: str | None) -> None:
+        if isinstance(self.voice.channel, VoiceChannel):
+            await self.voice.channel.edit(status=status)
+
     async def connect(self, interaction: Interaction) -> None:
         channel = self.get_voice_channel(interaction)
         if channel is None:
@@ -423,6 +434,7 @@ class MusicState:
             raise errors.AlreadyConnectedError
         utils.logger.debug(f"Moving (Guild: {self.guild.name}, Channel: {self.voice.channel.name} -> {channel.name})")
 
+        await self.set_status(None)
         await self.voice.move_to(channel)
         if self.audio_loop.is_running():
             self.audio_loop.restart()
@@ -435,6 +447,7 @@ class MusicState:
         utils.logger.debug(f"Disconnecting (Guild: {self.guild.name}, Channel: {self.voice.channel.name})")
 
         self.cancel()
+        await self.set_status(None)
         await self.voice.disconnect()
 
     def cancel(self) -> None:
@@ -459,26 +472,24 @@ class MusicState:
             utils.logger.exception(f"Error in Playing (Track: {track})", exc_info=error)
         self.queue.finish()
 
-    async def reset_timer(self) -> None:
-        if self.queue.empty() and not self.queue.playing:
-            await self.queue.put(None)
+    def when_timeout(self) -> float:
+        return self._bot.loop.time() + TIMEOUT
 
-    async def set_status(self, status: str | None) -> None:
-        if isinstance(self.voice.channel, VoiceChannel):
-            await self.voice.channel.edit(status=status)
+    def reset_timer(self) -> None:
+        utils.logger.debug(f"Resetting Timeout Timer (Guild: {self.guild.name})")
+        if self.timeout is not None and not self.timeout.expired():
+            self.timeout.reschedule(self.when_timeout())
 
     @tasks.loop()
     async def audio_loop(self) -> None:
         try:
-            track: Track | None = await asyncio.wait_for(self.queue.get(), timeout=TIMEOUT)
+            async with asyncio.timeout_at(self.when_timeout()) as self.timeout:
+                track = await self.queue.get()
         except TimeoutError:
             self._bot.dispatch("music_timeout", self)
             self.audio_loop.stop()
             return
 
-        if track is None:
-            self.queue.finish()
-            return
         await self.set_status(f"🎵 Now Playing {track.title or 'Unknown Track'}")
         self.voice.play(track.get_audio_source(), after=self.next)
         await self.queue.wait()

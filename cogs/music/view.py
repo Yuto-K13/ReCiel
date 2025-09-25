@@ -388,7 +388,7 @@ class GoogleSearchView(utils.CustomView):
         embed = TrackEmbed(self.track, title="Fetching the Track...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
 
-        await self.state.reset_timer()
+        self.state.reset_timer()
         track = await self.track.download()
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
 

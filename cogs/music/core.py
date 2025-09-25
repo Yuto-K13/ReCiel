@@ -170,7 +170,7 @@ class MusicCog(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
         state = await self.get_state(interaction)
-        await state.reset_timer()
+        state.reset_timer()
 
         track = await YouTubeDLPTrack.download(interaction.user, url)
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
@@ -186,12 +186,12 @@ class MusicCog(commands.Cog, name="Music"):
         await interaction.response.send_message(embed=embed)
 
         state = await self.get_state(interaction)
-        await state.reset_timer()
+        state.reset_timer()
 
         track = await GoogleSearchTrack.search_top(interaction.user, word)
         embed = TrackEmbed(track=track, title="Fetching the Track...", color=Color.light_grey())
         await interaction.edit_original_response(embed=embed)
-        await state.reset_timer()
+        state.reset_timer()
 
         track = await track.download()
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
@@ -206,7 +206,7 @@ class MusicCog(commands.Cog, name="Music"):
         embed = Embed(title="Searching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         state = await self.get_state(interaction)
-        await state.reset_timer()
+        state.reset_timer()
 
         view = await GoogleSearchView(interaction, state, word).search()
         embed = view.set_embed(title=f'Search Results for "{word}"', color=Color.light_grey())
