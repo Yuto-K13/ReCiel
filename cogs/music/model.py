@@ -10,7 +10,7 @@ from typing import Self
 import aiohttp
 import yt_dlp
 import yt_dlp.utils
-from discord import AudioSource, FFmpegPCMAudio, Interaction, Member, Message, User, VoiceChannel, VoiceClient
+from discord import AudioSource, FFmpegPCMAudio, Guild, Interaction, Member, Message, User, VoiceChannel, VoiceClient
 from discord.channel import VocalGuildChannel
 from discord.ext import tasks
 
@@ -116,6 +116,7 @@ class YouTubeDLPTrack(Track):
 
     @classmethod
     async def download(cls, user: User | Member, url: str) -> Self:
+        utils.logger.debug(f"Downloading Track (User: {user.display_name}, URL: {url})")
         loop = asyncio.get_running_loop()
         with ProcessPoolExecutor() as executor:
             info = await loop.run_in_executor(executor, cls._download, url)
@@ -226,6 +227,7 @@ class GoogleSearchTrack(Track):
     async def search(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
         if cls.API_KEY is None:
             raise errors.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
+        utils.logger.debug(f"Searching Tracks (User: {user.display_name}, Query: {word})")
 
         query = {
             "part": "snippet",
@@ -360,14 +362,19 @@ class MusicState:
             return None
         return user.voice.channel
 
-    def __init__(self, bot: CielType) -> None:
+    def __init__(self, bot: CielType, guild: Guild) -> None:
         self._bot = bot
+        self._guild = guild
         self._message: Message | None = None
         self._voice: VoiceClient | None = None
         self.queue = MusicQueue()
 
     def __del__(self) -> None:
         self.cancel()
+
+    @property
+    def guild(self) -> Guild:
+        return self._guild
 
     @property
     def message(self) -> Message:
@@ -377,6 +384,8 @@ class MusicState:
 
     @message.setter
     def message(self, message: Message) -> None:
+        if not isinstance(message, Message):
+            raise TypeError(f"Requires Message instance, not {message.__class__.__name__}")
         self._message = message
 
     @property
@@ -394,6 +403,7 @@ class MusicState:
             raise errors.UserNotInVoiceChannelError
         if channel.guild != interaction.guild:
             raise errors.UserNotInSameGuildError
+        utils.logger.debug(f"Connecting (Guild: {self.guild.name}, Channel: {channel.name})")
 
         if self.is_connected():
             raise errors.AlreadyConnectedError
@@ -407,11 +417,11 @@ class MusicState:
             raise errors.UserNotInVoiceChannelError
         if channel.guild != interaction.guild:
             raise errors.UserNotInSameGuildError
-
         if not self.is_connected():
             raise errors.NotConnectedError
         if self.voice.channel == channel:
             raise errors.AlreadyConnectedError
+        utils.logger.debug(f"Moving (Guild: {self.guild.name}, Channel: {self.voice.channel.name} -> {channel.name})")
 
         await self.voice.move_to(channel)
         if self.audio_loop.is_running():
@@ -422,12 +432,15 @@ class MusicState:
     async def disconnect(self) -> None:
         if not self.is_connected():
             raise errors.NotConnectedError
+        utils.logger.debug(f"Disconnecting (Guild: {self.guild.name}, Channel: {self.voice.channel.name})")
 
         self.cancel()
         await self.voice.disconnect()
 
     def cancel(self) -> None:
-        if self.audio_loop.is_running():
+        running = self.audio_loop.is_running()
+        utils.logger.debug(f"Cancelling Audio Loop (Guild: {self.guild.name}, Running: {running})")
+        if running:
             self.audio_loop.cancel()
 
     def skip(self) -> Track:
@@ -442,8 +455,8 @@ class MusicState:
 
     def next(self, error: Exception | None) -> None:
         if error is not None:
-            track = self.queue.current
-            utils.logger.exception(f"Error: {track.title if track is not None else 'Unknown Track'}", exc_info=error)
+            track = self.queue.current.title if self.queue.current is not None else "Unknown Track"
+            utils.logger.exception(f"Error in Playing (Track: {track})", exc_info=error)
         self.queue.finish()
 
     async def reset_timer(self) -> None:
@@ -477,10 +490,13 @@ class MusicState:
     @audio_loop.before_loop
     async def before_audio_loop(self) -> None:
         await self._bot.wait_until_ready()
+        utils.logger.debug(f"Starting Audio Loop (Guild: {self.guild.name})")
 
     @audio_loop.after_loop
     async def after_audio_loop(self) -> None:
-        if self.audio_loop.is_being_cancelled():
-            self.queue.clear()
-            if self.is_connected() and self.voice.is_playing():
-                self.voice.stop()
+        canceled = self.audio_loop.is_being_cancelled()
+        utils.logger.debug(f"Ending Audio Loop (Guild: {self.guild.name}, Canceled: {canceled})")
+
+        self.queue.clear()
+        if canceled and self.is_connected() and self.voice.is_playing():
+            self.voice.stop()

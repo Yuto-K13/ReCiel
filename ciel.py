@@ -1,3 +1,4 @@
+import asyncio
 import os
 from collections.abc import Generator, Iterable, Mapping
 from pathlib import Path
@@ -22,6 +23,13 @@ class CielTree(app_commands.CommandTree):
     async def on_error(self, interaction: Interaction, error: AppCommandError) -> None:
         kwargs = {"command": interaction.command.qualified_name if interaction.command else None}
         self.client.dispatch("interaction_error", interaction, error, **kwargs)
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        command = interaction.command.qualified_name if interaction.command is not None else "Unknown"
+        user = interaction.user.display_name
+        guild = interaction.guild if interaction.guild is not None else "Direct Message"
+        utils.logger.debug(f"Calling Command (Command: {command}, User: {user}, Guild: {guild})")
+        return True
 
     @property
     def command_map(self) -> Mapping[Command, AppCommand | AppCommandGroup]:
@@ -49,19 +57,19 @@ class CielTree(app_commands.CommandTree):
             self._command_map[cmd] = app_cmd
 
     async def map_commands(self, *, guild: Snowflake | None = None) -> None:
-        utils.logger.info(f"Mapping Commands (Guild: {guild})")
+        utils.logger.debug(f"Mapping Commands (Guild: {guild if guild is not None else 'Global'})")
         cmds = self.get_commands(guild=guild, type=AppCommandType.chat_input)
         app_cmds = await self.fetch_commands(guild=guild)
         self._mapping(cmds, app_cmds)
 
     async def sync(self, *, guild: Snowflake | None = None) -> list[AppCommand]:
-        utils.logger.info(f"Syncing Commands (Guild: {guild})")
+        utils.logger.debug(f"Syncing Commands (Guild: {guild if guild is not None else 'Global'})")
         app_cmds = await super().sync(guild=guild)
         await self.map_commands(guild=guild)
         return app_cmds
 
     def clear_command_map(self) -> None:
-        utils.logger.info("Clearing Command Map")
+        utils.logger.debug("Clearing Command Map")
         self._command_map.clear()
 
     def get_app_command(self, command: Command) -> AppCommand | AppCommandGroup | None:
@@ -101,25 +109,25 @@ class Ciel(commands.Bot):
         super().run(token=token, log_handler=None)
 
     async def load_extension(self, name: str, *, package: str | None = None) -> None:
-        utils.logger.debug(f"Loading Extension: {name}")
+        utils.logger.debug(f"Loading Extension (Extension: {name})")
         try:
             await super().load_extension(name, package=package)
         except DiscordException:
-            utils.logger.exception(f"Error while Loading Extension: {name}")
+            utils.logger.exception(f"Error while Loading Extension (Extension: {name})")
 
     async def unload_extension(self, name: str, *, package: str | None = None) -> None:
-        utils.logger.debug(f"Unloading Extension: {name}")
+        utils.logger.debug(f"Unloading Extension (Extension: {name})")
         try:
             await super().unload_extension(name, package=package)
         except DiscordException:
-            utils.logger.exception(f"Error while Unloading Extension: {name}")
+            utils.logger.exception(f"Error while Unloading Extension (Extension: {name})")
 
     async def reload_extension(self, name: str, *, package: str | None = None) -> None:
-        utils.logger.debug(f"Reloading Extension: {name}")
+        utils.logger.debug(f"Reloading Extension (Extension: {name})")
         try:
             await super().reload_extension(name, package=package)
         except DiscordException:
-            utils.logger.exception(f"Error while Reloading Extension: {name}")
+            utils.logger.exception(f"Error while Reloading Extension (Extension: {name})")
 
     def extension_files(self) -> Generator[str]:
         cogs_path = Path("./cogs")
@@ -166,6 +174,7 @@ class Ciel(commands.Bot):
 
     async def setup_commands(self) -> None:
         await self.wait_until_ready()
+        await asyncio.sleep(1)  # loggingのために待機
         if self.sync:  # Develop Mode でも Global Command ごと Sync する
             await self.command_sync(force=True)
         else:
@@ -177,16 +186,16 @@ class Ciel(commands.Bot):
             develop_guild_id = os.getenv("DEVELOP_GUILD_ID")
             try:
                 self.develop_guild = await self.fetch_guild(int(develop_guild_id))  # pyright: ignore[reportArgumentType]
-            except (ValueError, DiscordException):
+            except (TypeError, ValueError, DiscordException):
                 utils.logger.exception(f"Couldn't Fetch Guild (ID: {develop_guild_id})")
                 raise
 
         self.loop.create_task(self.setup_commands())
 
     async def on_ready(self) -> None:
-        user = self.user.name if self.user is not None else "Unknown"
-        develop_status = "Enabled" if self.develop else "Disabled"
-        utils.logger.info(f"Ciel Start-up (User: {user}, Develop Mode: {develop_status})")
+        user = self.user.display_name if self.user is not None else "Unknown"
+        develop = "Enabled" if self.develop else "Disabled"
+        utils.logger.info(f"Ciel Start-up (User: {user}, Develop Mode: {develop})")
 
     async def on_message(self, message: Message) -> None:
         pass  # process_commands 関数を無効化

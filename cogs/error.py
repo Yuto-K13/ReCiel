@@ -20,7 +20,7 @@ class ErrorCog(commands.Cog, name="Error"):
             for key, value in kwargs.items():
                 texts.append(f"{key.title()}: {value}")
 
-            utils.logger.exception(", ".join(texts), exc_info=error)
+            utils.logger.exception(f"Interaction Error ({', '.join(texts)})", exc_info=error)
 
         embed = utils.ErrorEmbed.from_interaction(client=self.bot, error=error, interaction=interaction)
         if interaction.response.is_done():
