@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "discord-py[voice]>=2.6.0",
+    "google-adk>=1.15.1",
     "python-dotenv>=1.1.1",
     "ruff>=0.12.12",
     "typing-extensions>=4.15.0",
