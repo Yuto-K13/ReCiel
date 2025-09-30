@@ -194,9 +194,10 @@ class QueueTracksView(utils.CustomView):
             self.button_first.disabled = True
             self.button_back.disabled = True
         else:
+            user = self.track.user
             self.button_remove.label = "Remove"
             self.button_remove.emoji = "🗑️"
-            self.button_remove.disabled = self.track.user != self.user
+            self.button_remove.disabled = not (user is None or user.bot or user == self.user)
 
             self.button_first.disabled = False
             self.button_back.disabled = False
