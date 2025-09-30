@@ -1,34 +1,19 @@
 import asyncio
 import collections
-import datetime
-import os
-import urllib.parse
 from collections.abc import Generator, Iterable
-from concurrent.futures import ProcessPoolExecutor
+from datetime import timedelta
 from typing import Self
 
-import aiohttp
-import yt_dlp
-import yt_dlp.utils
-from discord import AudioSource, FFmpegPCMAudio, Guild, Interaction, Member, Message, User, VoiceChannel, VoiceClient
-from discord.channel import VocalGuildChannel
+from discord import ClientUser, Guild, Interaction, Member, Message, User, VoiceClient
+from discord.channel import VocalGuildChannel, VoiceChannel
 from discord.ext import tasks
+from discord.player import AudioSource, FFmpegPCMAudio
 
 import utils
 from utils.types import CielType
 
-from . import errors
+from . import errors, youtube
 
-YTDLP_OPTIONS = {
-    "format": "bestaudio/best",
-    "quiet": True,
-    "noplaylist": True,
-    "no_warnings": True,
-    "ignore_errors": True,
-    "noprogress": True,
-    "geo-country": "JP",
-    "max_results": 1,
-}
 FFMPEG_BEFORE_OPTIONS = [
     "-reconnect 1",
     "-reconnect_streamed 1",
@@ -48,14 +33,14 @@ TIMEOUT = 300
 class Track:
     def __init__(
         self,
-        user: User | Member,
+        user: User | Member | ClientUser | None,
         *,
         title: str | None = None,
         url: str | None = None,
         channel: str | None = None,
         channel_url: str | None = None,
         thumbnail: str | None = None,
-        duration: datetime.timedelta | None = None,
+        duration: timedelta | None = None,
         source: str | None = None,
     ) -> None:
         self.user = user
@@ -70,6 +55,18 @@ class Track:
 
     def __hash__(self) -> int:
         return hash((self.user, self.source))
+
+    @property
+    def user_name(self) -> str:
+        if self.user is None:
+            return "Unknown"
+        return self.user.display_name
+
+    @property
+    def user_icon(self) -> str | None:
+        if self.user is None:
+            return None
+        return self.user.display_avatar.url
 
     @property
     def title_markdown(self) -> str:
@@ -102,29 +99,15 @@ class Track:
 
 
 class YouTubeDLPTrack(Track):
-    @staticmethod
-    def _download(url: str) -> dict:
-        try:
-            with yt_dlp.YoutubeDL(YTDLP_OPTIONS) as ydl:  # pyright: ignore[reportArgumentType]
-                info = ydl.extract_info(url, download=False)
-                info = ydl.sanitize_info(info)
-        except yt_dlp.utils.DownloadError as e:
-            raise errors.DownloadError(str(e)) from e
-        except yt_dlp.utils.YoutubeDLError as e:
-            raise errors.YouTubeDLPError(str(e)) from e
-        return info  # pyright: ignore[reportReturnType]
-
     @classmethod
-    async def download(cls, user: User | Member, url: str) -> Self:
-        utils.logger.debug(f"Downloading Track (User: {user.display_name}, URL: {url})")
-        loop = asyncio.get_running_loop()
-        with ProcessPoolExecutor() as executor:
-            info = await loop.run_in_executor(executor, cls._download, url)
-
+    async def download(cls, user: User | Member | ClientUser | None, url: str) -> Self:
+        user_name = user.display_name if user is not None else "Unknown"
+        utils.logger.debug(f"Downloading Track (User: {user_name}, URL: {url})")
+        info = await youtube.download(url)
         return cls.from_info(user, info)
 
     @classmethod
-    def from_info(cls, user: User | Member, info: dict) -> Self:
+    def from_info(cls, user: User | Member | ClientUser | None, info: dict) -> Self:
         title = info.get("title")
         url = info.get("webpage_url")
         channel = info.get("uploader")
@@ -132,7 +115,7 @@ class YouTubeDLPTrack(Track):
         thumbnail = info.get("thumbnail")
         duration = info.get("duration")
         if duration is not None:
-            duration = datetime.timedelta(seconds=duration)
+            duration = timedelta(seconds=duration)
 
         source = info.get("url")
         headers = []
@@ -163,14 +146,14 @@ class YouTubeDLPTrack(Track):
 
     def __init__(
         self,
-        user: User | Member,
+        user: User | Member | ClientUser | None,
         *,
         title: str | None = None,
         url: str | None = None,
         channel: str | None = None,
         channel_url: str | None = None,
         thumbnail: str | None = None,
-        duration: datetime.timedelta | None = None,
+        duration: timedelta | None = None,
         source: str | None = None,
         headers: list[str] | None = None,
     ) -> None:
@@ -215,45 +198,30 @@ class YouTubeDLPTrack(Track):
 
 
 class GoogleSearchTrack(Track):
-    API_KEY = os.getenv("GOOGLE_API_KEY")
-    API_URL = "https://www.googleapis.com/youtube/v3/search"
-
     @classmethod
-    async def search_top(cls, user: User | Member, word: str) -> Self:
+    async def search_top(cls, user: User | Member | ClientUser, word: str) -> Self:
         tracks, _ = await cls.search(user, word, results=1)
         return tracks[0]
 
     @classmethod
-    async def search(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
-        if cls.API_KEY is None:
-            raise errors.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
-        utils.logger.debug(f"Searching Tracks (User: {user.display_name}, Query: {word})")
-
-        query = {
-            "part": "snippet",
-            "type": "video",
-            "maxResults": results,
-            "q": word,
-            "key": cls.API_KEY,
-            "pageToken": token,
-        }
-        parse = urllib.parse.urlparse(cls.API_URL)
-        parse = parse._replace(query=urllib.parse.urlencode(query))
-        url = urllib.parse.urlunparse(parse)
-
-        async with aiohttp.ClientSession() as session, session.get(url) as res:
-            infos: dict = await res.json()
-        if "error" in infos:
-            error_info: dict = infos["error"]
-            raise errors.SearchError(error_info.get("message"))
-
-        token = infos.get("nextPageToken", "")
-        tracks = [cls.from_info(user, info) for info in infos.get("items", [])]
+    async def search(
+        cls,
+        user: User | Member | ClientUser | None,
+        word: str,
+        *,
+        results: int,
+        token: str = "",
+    ) -> tuple[list[Self], str]:
+        user_name = user.display_name if user is not None else "Unknown"
+        utils.logger.debug(f"Searching Tracks (User: {user_name}, Query: {word})")
+        info = await youtube.search(word, results=results, token=token)
+        token = info.get("nextPageToken", "")
+        tracks = [cls.from_info(user, i) for i in info.get("items", [])]
 
         return tracks, token
 
     @classmethod
-    def from_info(cls, user: User | Member, info: dict[str, dict]) -> Self:
+    def from_info(cls, user: User | Member | ClientUser | None, info: dict[str, dict]) -> Self:
         snippet = info.get("snippet", {})
 
         title = snippet.get("title")
