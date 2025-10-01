@@ -142,4 +142,5 @@ class QueueEmbed(Embed):
         self.add_field(name="Tracks in the Queue", value="\n".join(lines), inline=False)
 
         queue_loop = "✔️" if self.queue.queue_loop else "❌"
-        self.set_footer(text=f"Loop: {queue_loop}")
+        auto_play = f'✔️ "{self.queue.auto_play}"' if self.queue.auto_play is not None else "❌"
+        self.set_footer(text=f"Loop: {queue_loop}, Auto Play: {auto_play}")

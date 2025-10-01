@@ -45,6 +45,11 @@ class QueueChangedError(MusicError):
         super().__init__(*args, msg="キューが変更されました\n`Update`ボタンを押してください", ignore=True)
 
 
+class InvalidAutoPlayStateError(MusicError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="自動再生の状態が無効です", ignore=True)
+
+
 class GoogleAPIError(MusicError):
     def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
         super().__init__(*args, msg=msg or "Google APIでエラーが発生しました", ignore=ignore)
@@ -68,3 +73,8 @@ class YouTubeDLPError(MusicError):
 class DownloadError(YouTubeDLPError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args, msg="ダウンロード中にエラーが発生しました")
+
+
+class GoogleADKError(MusicError):
+    def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
+        super().__init__(*args, msg=msg or "Google ADKでエラーが発生しました", ignore=ignore)
