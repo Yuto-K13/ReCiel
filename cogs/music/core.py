@@ -3,12 +3,15 @@ from typing import Literal, overload
 from discord import Color, Embed, Interaction, Member, VoiceState, app_commands
 from discord.ext import commands
 
+import utils
 from utils.types import CielType
 
 from . import errors
 from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
 from .model import GoogleSearchTrack, MusicState, YouTubeDLPTrack
 from .view import GoogleSearchView, QueueTracksView, QueueView
+
+RETRY_SUGGESTION = 3
 
 
 class MusicCog(commands.Cog, name="Music"):
@@ -67,6 +70,39 @@ class MusicCog(commands.Cog, name="Music"):
         )
         await state.disconnect()
         await state.message.reply(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_music_auto_play(self, state: MusicState) -> None:
+        for _ in range(RETRY_SUGGESTION):
+            state.reset_timer()
+            try:
+                track = await state.suggestion()
+            except (errors.NotConnectedError, errors.InvalidAutoPlayStateError):
+                return
+            except errors.GoogleADKError:
+                utils.logger.exception("Auto Play Suggestion Error")
+                continue
+            if not track.url:
+                utils.logger.error("Auto Play Suggestion has Invalid Url")
+                continue
+
+            embed = TrackEmbed(track=track, title="Fetching the Track... (Auto Play)", color=Color.light_grey())
+            message = await state.message.channel.send(embed=embed)
+
+            state.reset_timer()
+            try:
+                track = await track.download()
+            except (utils.InvalidAttributeError, errors.YouTubeDLPError):
+                utils.logger.exception("Auto Play Download Error")
+                continue
+
+            embed = TrackEmbed(track=track, title="Added to the Queue (Auto Play)", color=Color.green())
+            await state.queue.put(track)
+            await message.edit(embed=embed)
+            return
+
+        embed = Embed(title="Auto Play Failed", description="Failed to get a track for auto play.", color=Color.red())
+        await state.message.channel.send(embed=embed)
 
     @overload
     async def get_state(
@@ -265,6 +301,24 @@ class MusicCog(commands.Cog, name="Music"):
         view = QueueTracksView(interaction, state)
         embed = view.set_embed(color=Color.blue())
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command()
+    @app_commands.guild_only()
+    @app_commands.describe(word="自動再生のキーワード (未指定で無効化)")
+    async def autoplay(self, interaction: Interaction, word: str = "") -> None:
+        """自動再生のキーワードを設定"""
+        embed = Embed(title="Setting Auto Play...", color=Color.light_grey())
+        await interaction.response.send_message(embed=embed)
+        state = await self.get_state(interaction)
+
+        if word:
+            state.queue.enable_auto_play(word)
+            self.bot.dispatch("music_auto_play", state)
+            embed = QueueEmbed(state.queue, title="Auto Play Enabled", color=Color.green())
+        else:
+            state.queue.disable_auto_play()
+            embed = QueueEmbed(state.queue, title="Auto Play Disabled", color=Color.red())
+        await interaction.edit_original_response(embed=embed)
 
 
 async def setup(bot: CielType) -> None:
