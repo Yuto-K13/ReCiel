@@ -89,7 +89,7 @@ class QueueView(utils.CustomView):
         if self.hash != hash(self.state.queue):
             raise errors.QueueChangedError
 
-        track = self.state.skip()
+        track = await self.state.skip()
         embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         await interaction.response.send_message(embed=embed)
         await self.update(interaction)
@@ -223,7 +223,7 @@ class QueueTracksView(utils.CustomView):
         self.check_validity(interaction)
 
         if self.index == 0:
-            track = self.state.skip()
+            track = await self.state.skip()
             embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         else:
             del self.state.queue[self.index - 1]

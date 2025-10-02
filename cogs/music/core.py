@@ -1,5 +1,3 @@
-from typing import Literal, overload
-
 from discord import Color, Embed, Interaction, Member, VoiceState, app_commands
 from discord.ext import commands
 
@@ -74,17 +72,23 @@ class MusicCog(commands.Cog, name="Music"):
     @commands.Cog.listener()
     async def on_music_auto_play(self, state: MusicState) -> None:
         for _ in range(RETRY_SUGGESTION):
+            if not await state.is_valid():
+                return
+
             state.reset_timer()
             try:
                 track = await state.suggestion()
-            except (errors.NotConnectedError, errors.InvalidAutoPlayStateError):
-                return
             except errors.GoogleADKError:
                 utils.logger.exception("Auto Play Suggestion Error")
                 continue
             if not track.url:
                 utils.logger.error("Auto Play Suggestion has Invalid Url")
                 continue
+
+            if not await state.is_valid():
+                embed = TrackEmbed(track=track, title="Cancelled Adding Track (Auto Play)", color=Color.red())
+                await state.message.channel.send(embed=embed)
+                return
 
             embed = TrackEmbed(track=track, title="Fetching the Track... (Auto Play)", color=Color.light_grey())
             message = await state.message.channel.send(embed=embed)
@@ -96,49 +100,55 @@ class MusicCog(commands.Cog, name="Music"):
                 utils.logger.exception("Auto Play Download Error")
                 continue
 
+            if not await state.is_valid():
+                embed = TrackEmbed(track=track, title="Cancelled Adding Track (Auto Play)", color=Color.red())
+                await message.edit(embed=embed)
+                return
+
             embed = TrackEmbed(track=track, title="Added to the Queue (Auto Play)", color=Color.green())
             await state.queue.put(track)
             await message.edit(embed=embed)
             return
 
-        embed = Embed(title="Auto Play Failed", description="Failed to get a track for auto play.", color=Color.red())
+        embed = Embed(
+            title="Failed Adding Track (Auto Play)",
+            description="Failed to get a track for auto play.",
+            color=Color.red(),
+        )
         await state.message.channel.send(embed=embed)
 
-    @overload
-    async def get_state(
+    async def get_connected_state(
         self,
         interaction: Interaction,
         *,
-        allow_connect: Literal[True] = ...,
-        allow_same_channel: bool = ...,
-        allow_edit_message: bool = ...,
-    ) -> MusicState: ...
-
-    @overload
-    async def get_state(
-        self,
-        interaction: Interaction,
-        *,
-        allow_connect: Literal[False] = ...,
-        allow_same_channel: bool = ...,
-        allow_edit_message: bool = ...,
-    ) -> MusicState | None: ...
-
-    async def get_state(
-        self,
-        interaction: Interaction,
-        *,
-        allow_connect: bool = True,
-        allow_same_channel: bool = True,
-        allow_edit_message: bool = False,
-    ) -> MusicState | None:
+        allow_different_channel: bool = False,
+    ) -> MusicState:
         if interaction.guild is None:
             raise errors.UserNotInGuildError
-        state = self.states.get(interaction.guild.id)
-        if not allow_connect:
-            return state
 
-        embed = None
+        state = self.states.get(interaction.guild.id)
+        if state is None or not state.is_connected():
+            raise errors.NotConnectedError
+        if not state.audio_loop.is_running():
+            raise errors.NotRunningAudioLoopError
+        if not await state.is_session_active():
+            raise errors.MissingSessionError
+        if not allow_different_channel and state.get_voice_channel(interaction) != state.voice.channel:
+            raise errors.UserNotInSameChannelError
+
+        return state
+
+    async def get_or_connect_state(
+        self,
+        interaction: Interaction,
+        *,
+        allow_same_channel: bool = True,
+        allow_edit_message: bool = False,
+    ) -> MusicState:
+        if interaction.guild is None:
+            raise errors.UserNotInGuildError
+
+        state = self.states.get(interaction.guild.id)
         if state is None:
             state = MusicState(self.bot, interaction.guild)
             self.states[interaction.guild.id] = state
@@ -171,6 +181,7 @@ class MusicCog(commands.Cog, name="Music"):
             message = await interaction.edit_original_response(embed=embed)
         else:
             message = await interaction.followup.send(embed=embed, wait=True)
+
         state.message = message
         return state
 
@@ -180,17 +191,13 @@ class MusicCog(commands.Cog, name="Music"):
         """Voice Channelに接続"""
         embed = Embed(title="Connecting...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
-        await self.get_state(interaction, allow_same_channel=False, allow_edit_message=True)
+        await self.get_or_connect_state(interaction, allow_same_channel=False, allow_edit_message=True)
 
     @app_commands.command()
     @app_commands.guild_only()
     async def disconnect(self, interaction: Interaction) -> None:
         """Voice Channelから切断"""
-        state = await self.get_state(interaction, allow_connect=False)
-        if state is None or not state.is_connected():
-            raise errors.NotConnectedError
-        if state.get_voice_channel(interaction) != state.voice.channel:
-            raise errors.UserNotInSameChannelError
+        state = await self.get_connected_state(interaction)
 
         channel = state.voice.channel
         await state.disconnect()
@@ -205,10 +212,16 @@ class MusicCog(commands.Cog, name="Music"):
         embed = Embed(title="Fetching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
 
-        state = await self.get_state(interaction)
+        state = await self.get_or_connect_state(interaction)
         state.reset_timer()
 
         track = await YouTubeDLPTrack.download(interaction.user, url)
+        if not await state.is_valid():
+            embed = TrackEmbed(track=track, title="Cancelled Adding Track", color=Color.red())
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.delete_original_response()
+            return
+
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
         await state.queue.put(track)
         await interaction.edit_original_response(embed=embed)
@@ -221,15 +234,26 @@ class MusicCog(commands.Cog, name="Music"):
         embed = Embed(title="Searching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
 
-        state = await self.get_state(interaction)
+        state = await self.get_or_connect_state(interaction)
         state.reset_timer()
-
         track = await GoogleSearchTrack.search_top(interaction.user, word)
+        if not await state.is_valid():
+            embed = TrackEmbed(track=track, title="Cancelled Adding Track", color=Color.red())
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.delete_original_response()
+            return
+
         embed = TrackEmbed(track=track, title="Fetching the Track...", color=Color.light_grey())
         await interaction.edit_original_response(embed=embed)
-        state.reset_timer()
 
+        state.reset_timer()
         track = await track.download()
+        if not await state.is_valid():
+            embed = TrackEmbed(track=track, title="Cancelled Adding Track", color=Color.red())
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.delete_original_response()
+            return
+
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
         await state.queue.put(track)
         await interaction.edit_original_response(embed=embed)
@@ -241,7 +265,7 @@ class MusicCog(commands.Cog, name="Music"):
         """YouTubeで曲を検索した結果を選択してキューに追加"""
         embed = Embed(title="Searching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        state = await self.get_state(interaction)
+        state = await self.get_or_connect_state(interaction)
         state.reset_timer()
 
         view = await GoogleSearchView(interaction, state, word).search()
@@ -252,13 +276,9 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def skip(self, interaction: Interaction) -> None:
         """再生中の曲をスキップ"""
-        state = await self.get_state(interaction, allow_connect=False)
-        if state is None or not state.is_connected():
-            raise errors.NotConnectedError
-        if state.get_voice_channel(interaction) != state.voice.channel:
-            raise errors.UserNotInSameChannelError
+        state = await self.get_connected_state(interaction)
 
-        track = state.skip()
+        track = await state.skip()
         embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         await interaction.response.send_message(embed=embed)
 
@@ -266,11 +286,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def loop(self, interaction: Interaction) -> None:
         """キューのループ再生を切り替え"""
-        state = await self.get_state(interaction, allow_connect=False)
-        if state is None or not state.is_connected():
-            raise errors.NotConnectedError
-        if state.get_voice_channel(interaction) != state.voice.channel:
-            raise errors.UserNotInSameChannelError
+        state = await self.get_connected_state(interaction)
 
         if state.queue.toggle():
             embed = QueueEmbed(state.queue, title="Loop Enabled", color=Color.green())
@@ -282,9 +298,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def queue(self, interaction: Interaction) -> None:
         """キューの情報を表示"""
-        state = await self.get_state(interaction, allow_connect=False)
-        if state is None or not state.is_connected():
-            raise errors.NotConnectedError
+        state = await self.get_connected_state(interaction, allow_different_channel=True)
 
         view = QueueView(interaction, state)
         embed = view.set_embed(title=f"Queue for {interaction.guild.name}", color=Color.blue())  # pyright: ignore[reportOptionalMemberAccess]
@@ -294,9 +308,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def track(self, interaction: Interaction) -> None:
         """キューの詳細情報を表示"""
-        state = await self.get_state(interaction, allow_connect=False)
-        if state is None or not state.is_connected():
-            raise errors.NotConnectedError
+        state = await self.get_connected_state(interaction, allow_different_channel=True)
 
         view = QueueTracksView(interaction, state)
         embed = view.set_embed(color=Color.blue())
@@ -309,7 +321,7 @@ class MusicCog(commands.Cog, name="Music"):
         """自動再生のキーワードを設定"""
         embed = Embed(title="Setting Auto Play...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
-        state = await self.get_state(interaction)
+        state = await self.get_or_connect_state(interaction)
 
         if word:
             state.queue.enable_auto_play(word)
