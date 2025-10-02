@@ -78,7 +78,7 @@ class MusicCog(commands.Cog, name="Music"):
             state.reset_timer()
             try:
                 track = await state.suggestion()
-            except errors.GoogleADKError:
+            except utils.GoogleADKError:
                 utils.logger.exception("Auto Play Suggestion Error")
                 continue
             if not track.url:
@@ -132,7 +132,7 @@ class MusicCog(commands.Cog, name="Music"):
         if not state.audio_loop.is_running():
             raise errors.NotRunningAudioLoopError
         if not await state.is_session_active():
-            raise errors.MissingSessionError
+            raise utils.MissingSessionError
         if not allow_different_channel and state.get_voice_channel(interaction) != state.voice.channel:
             raise errors.UserNotInSameChannelError
 
