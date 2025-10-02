@@ -1,3 +1,4 @@
+from .agent import *
 from .commands import *
 from .decorators import *
 from .embed import *

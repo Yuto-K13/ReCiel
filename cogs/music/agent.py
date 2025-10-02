@@ -8,6 +8,8 @@ import utils
 
 from . import youtube
 
+APP_NAME = "CielMusic"
+
 
 async def search_youtube(word: str) -> list[dict[str, str]]:
     """指定されたキーワードでYouTube上の動画を検索し、最大3件の関連性の高い動画の情報を取得する非同期関数
@@ -95,13 +97,9 @@ def output_info(title: str, url: str, channel: str, channel_url: str, thumbnail:
     return json.dumps(info)
 
 
-APP_NAME = "CielMusic"
-GEMINI_2_5_FLASH = "gemini-2.5-flash"
-
-SESSION_SERVICE = InMemorySessionService()
 AGENT = Agent(
     name=APP_NAME,
-    model=GEMINI_2_5_FLASH,
+    model=utils.AgentModel.gemini_2_5_flash,
     description="ユーザーから与えられたキーワードに基づき、YouTube上で関連性の高い楽曲を検索し、最適な楽曲のURLを提案する音楽推薦エージェントです。",
     instruction="""
     あなたは音楽推薦エージェントです。
@@ -124,4 +122,6 @@ AGENT = Agent(
     """,
     tools=[search_youtube, output_info],
 )
+
+SESSION_SERVICE = InMemorySessionService()
 RUNNER = Runner(app_name=APP_NAME, agent=AGENT, session_service=SESSION_SERVICE)

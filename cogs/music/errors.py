@@ -78,13 +78,3 @@ class YouTubeDLPError(MusicError):
 class DownloadError(YouTubeDLPError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args, msg="ダウンロード中にエラーが発生しました")
-
-
-class GoogleADKError(MusicError):
-    def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
-        super().__init__(*args, msg=msg or "Google ADKでエラーが発生しました", ignore=ignore)
-
-
-class MissingSessionError(GoogleADKError):
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args, msg="セッションが存在しません", ignore=True)

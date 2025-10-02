@@ -9,8 +9,6 @@ from discord import ClientUser, Guild, Interaction, Member, Message, User, Voice
 from discord.channel import VocalGuildChannel, VoiceChannel
 from discord.ext import tasks
 from discord.player import AudioSource, FFmpegPCMAudio
-from google.genai.errors import APIError
-from google.genai.types import Content, Part
 
 import utils
 from utils.types import CielType
@@ -394,8 +392,12 @@ class MusicState:
         if not self.is_connected():
             return False
         user_id, session_id = self.get_session_info()
-        session = await SESSION_SERVICE.get_session(app_name=APP_NAME, user_id=user_id, session_id=session_id)
-        return session is not None
+        return await utils.is_session_active(
+            SESSION_SERVICE,
+            app_name=APP_NAME,
+            user_id=user_id,
+            session_id=session_id,
+        )
 
     async def is_valid(self) -> bool:
         if not self.is_connected():
@@ -469,32 +471,25 @@ class MusicState:
         return track
 
     async def suggestion(self) -> GoogleSearchTrack:
-        async def get_info() -> str | None:
-            user_id, session_id = self.get_session_info()
-            content = Content(role="user", parts=[Part(text=self.queue.auto_play)])
-            async for event in RUNNER.run_async(user_id=user_id, session_id=session_id, new_message=content):
-                if not await self.is_session_active():
-                    raise errors.MissingSessionError
-                if event.is_final_response() and event.content and event.content.parts:
-                    return event.content.parts[0].text
-            return None
-
         if not self.is_connected():
             raise errors.NotConnectedError
         if self.queue.auto_play is None or not self.queue.empty():
             raise errors.InvalidAutoPlayStateError
 
-        try:
-            info = await get_info()
-        except APIError as e:
-            raise errors.GoogleADKError from e
-        if info is None:
-            raise errors.GoogleADKError("No information returned")
+        user_id, session_id = self.get_session_info()
+        info = await utils.run_agent(
+            SESSION_SERVICE,
+            RUNNER,
+            app_name=APP_NAME,
+            user_id=user_id,
+            session_id=session_id,
+            query=self.queue.auto_play,
+        )
 
         try:
             info = json.loads(info)
         except json.JSONDecodeError as e:
-            raise errors.GoogleADKError("Failed to parse JSON") from e
+            raise utils.GoogleADKError("Failed to parse JSON") from e
 
         return GoogleSearchTrack(self._bot.user, **info)
 
