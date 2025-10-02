@@ -35,6 +35,11 @@ class UserNotInGuildError(MusicError):
         super().__init__(*args, msg="サーバーで実行してください", ignore=True)
 
 
+class NotRunningAudioLoopError(MusicError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="オーディオループが実行されていません", ignore=True)
+
+
 class NoTrackPlayingError(MusicError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args, msg="再生中の曲がありません", ignore=True)
@@ -78,3 +83,8 @@ class DownloadError(YouTubeDLPError):
 class GoogleADKError(MusicError):
     def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
         super().__init__(*args, msg=msg or "Google ADKでエラーが発生しました", ignore=ignore)
+
+
+class MissingSessionError(GoogleADKError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="セッションが存在しません", ignore=True)

@@ -384,11 +384,25 @@ class MusicState:
             raise utils.InvalidAttributeError(f"{self.__class__.__name__}.voice") from errors.NotConnectedError
         return self._voice  # pyright: ignore[reportReturnType]
 
+    def get_session_info(self) -> tuple[str, str]:
+        return str(self.guild.id), str(self.voice.channel.id)
+
     def is_connected(self) -> bool:
         return self._voice is not None and self._voice.is_connected()
 
-    def get_session_info(self) -> tuple[str, str]:
-        return str(self.guild.id), str(self.voice.channel.id)
+    async def is_session_active(self) -> bool:
+        if not self.is_connected():
+            return False
+        user_id, session_id = self.get_session_info()
+        session = await SESSION_SERVICE.get_session(app_name=APP_NAME, user_id=user_id, session_id=session_id)
+        return session is not None
+
+    async def is_valid(self) -> bool:
+        if not self.is_connected():
+            return False
+        if not self.audio_loop.is_running():
+            return False
+        return await self.is_session_active()
 
     async def set_status(self, status: str | None) -> None:
         if isinstance(self.voice.channel, VoiceChannel):
@@ -443,7 +457,7 @@ class MusicState:
         await SESSION_SERVICE.delete_session(app_name=APP_NAME, user_id=user_id, session_id=session_id)
         await self.voice.disconnect()
 
-    def skip(self) -> Track:
+    async def skip(self) -> Track:
         if not self.is_connected():
             raise errors.NotConnectedError
         track = self.queue.current
@@ -451,6 +465,7 @@ class MusicState:
             raise errors.NoTrackPlayingError
 
         self.voice.stop()
+        await self.set_status(None)
         return track
 
     async def suggestion(self) -> GoogleSearchTrack:
@@ -458,6 +473,8 @@ class MusicState:
             user_id, session_id = self.get_session_info()
             content = Content(role="user", parts=[Part(text=self.queue.auto_play)])
             async for event in RUNNER.run_async(user_id=user_id, session_id=session_id, new_message=content):
+                if not await self.is_session_active():
+                    raise errors.MissingSessionError
                 if event.is_final_response() and event.content and event.content.parts:
                     return event.content.parts[0].text
             return None
@@ -510,7 +527,10 @@ class MusicState:
             self._bot.dispatch("music_timeout", self)
             self.audio_loop.stop()
             return
+        finally:
+            self._timeout = None
 
+        utils.logger.info(f"Start Playing (Guild: {self.guild.name}, Track: {track.title or 'Unknown Track'})")
         await self.set_status(f"🎵 Now Playing {track.title or 'Unknown Track'}")
         self.voice.play(track.get_audio_source(), after=self.next)
         if self.queue.auto_play is not None and self.queue.empty():
