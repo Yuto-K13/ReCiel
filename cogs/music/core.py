@@ -110,6 +110,7 @@ class MusicCog(commands.Cog, name="Music"):
             await message.edit(embed=embed)
             return
 
+        state.queue.disable_auto_play()
         embed = Embed(
             title="Failed Adding Track (Auto Play)",
             description="Failed to get a track for auto play.",
