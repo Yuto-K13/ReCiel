@@ -489,7 +489,7 @@ class MusicState:
         try:
             info = json.loads(info)
         except json.JSONDecodeError as e:
-            raise utils.GoogleADKError("Failed to parse JSON") from e
+            raise utils.InvalidResponseReturnedError from e
 
         return GoogleSearchTrack(self._bot.user, **info)
 

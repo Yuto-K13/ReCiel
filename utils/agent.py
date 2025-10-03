@@ -30,15 +30,18 @@ async def run_agent(
     session_id: str,
     query: str,
 ) -> str:
+    response = None
     content = Content(role="user", parts=[Part(text=query)])
     try:
         async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
             if not await is_session_active(session_service, app_name=app_name, user_id=user_id, session_id=session_id):
                 raise errors.MissingSessionError
-            if event.is_final_response() and event.content and event.content.parts:
-                if event.content.parts[0].text is not None:
-                    return event.content.parts[0].text
-                break
+            if event.is_final_response():
+                response = None
+                if event.content and event.content.parts:
+                    response = event.content.parts[0].text
     except APIError as e:
         raise errors.GoogleADKError from e
-    raise errors.GoogleADKError("No Information Returned")
+    if response is None:
+        raise errors.NoResponseReturnedError
+    return response

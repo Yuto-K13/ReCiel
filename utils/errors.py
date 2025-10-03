@@ -49,3 +49,13 @@ class GoogleADKError(CustomError):
 class MissingSessionError(GoogleADKError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args, msg="セッションが存在しません", ignore=True)
+
+
+class NoResponseReturnedError(GoogleADKError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="レスポンスが返されませんでした")
+
+
+class InvalidResponseReturnedError(GoogleADKError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="無効なレスポンスが返されました")

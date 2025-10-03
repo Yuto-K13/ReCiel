@@ -1,8 +1,7 @@
-import json
-
-from google.adk.agents import Agent
+from google.adk.agents import Agent, SequentialAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from pydantic import BaseModel, Field
 
 import utils
 
@@ -69,36 +68,16 @@ async def search_youtube(word: str) -> list[dict[str, str]]:
     return items
 
 
-def output_info(title: str, url: str, channel: str, channel_url: str, thumbnail: str) -> str:
-    """指定された情報を元にYouTube動画の情報を出力する関数
-
-    Args:
-        title (str): 動画のタイトル
-        url (str): 動画のYouTubeリンク
-        channel (str): 動画を投稿したチャンネル名
-        channel_url (str): チャンネルのURL
-        thumbnail (str): 動画のサムネイル画像URL
-
-    Returns:
-        str: 最終的な出力に適したjson形式の辞書
-
-    Note:
-        - 各引数は必要十分な情報のみを含むようにしてください。
-        - 不明な場合は空文字列を指定してください。
-
-    """
-    info = {
-        "title": title,
-        "url": url,
-        "channel": channel,
-        "channel_url": channel_url,
-        "thumbnail": thumbnail,
-    }
-    return json.dumps(info)
+class TrackInfo(BaseModel):
+    title: str = Field(description="動画のタイトル")
+    url: str = Field(description="動画のYouTubeリンク")
+    channel: str = Field(description="動画を投稿したチャンネル名")
+    channel_url: str = Field(description="チャンネルのURL")
+    thumbnail: str = Field(description="動画のサムネイル画像URL")
 
 
-AGENT = Agent(
-    name=APP_NAME,
+WOKER_AGENT = Agent(
+    name=f"{APP_NAME}Worker",
     model=utils.AgentModel.gemini_2_5_flash,
     description="ユーザーから与えられたキーワードに基づき、YouTube上で関連性の高い楽曲を検索し、最適な楽曲のURLを提案する音楽推薦エージェントです。",
     instruction="""
@@ -110,7 +89,26 @@ AGENT = Agent(
     もし検索結果がキーワードに沿わない場合や、楽曲として不適切な場合は、検索ワードを変えて繰り返し検索し、ユーザーの意図に合致した楽曲が見つかるまで試行してください。
     また可能な限り過去にユーザーへ提案した楽曲と同じものは避けてください。
 
-    最終的に選んだ楽曲についての情報を、ツール output_info を使って以下のjson形式で出力してください。
+    最終的に選んだ楽曲についての情報を、以下の情報をすべて含めて出力してください。
+
+    "title": "楽曲のタイトル",
+    "url": "楽曲のYouTubeリンク",
+    "channel": "楽曲を投稿したチャンネル名",
+    "channel_url": "チャンネルのURL",
+    "thumbnail": "楽曲のサムネイル画像URL"
+
+    """,
+    tools=[search_youtube],
+)
+
+
+FORMAT_AGENT = Agent(
+    name=f"{APP_NAME}Formatter",
+    model=utils.AgentModel.gemini_2_5_flash,
+    description="入力された動画の情報を正しいJSON形式に整形するエージェントです。",
+    instruction="""
+    あなたはJSONフォーマッターエージェントです。
+    動画の情報が与えられるため、以下のjson形式に整形して出力してください。
 
     {
         "title": "楽曲のタイトル",
@@ -120,8 +118,11 @@ AGENT = Agent(
         "thumbnail": "楽曲のサムネイル画像URL"
     }
     """,
-    tools=[search_youtube, output_info],
+    output_schema=TrackInfo,
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
 )
 
+AGENT = SequentialAgent(name=APP_NAME, sub_agents=[WOKER_AGENT, FORMAT_AGENT])
 SESSION_SERVICE = InMemorySessionService()
 RUNNER = Runner(app_name=APP_NAME, agent=AGENT, session_service=SESSION_SERVICE)
