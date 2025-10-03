@@ -42,47 +42,67 @@ class Track:
         channel: str | None = None,
         channel_url: str | None = None,
         thumbnail: str | None = None,
-        duration: timedelta | None = None,
+        duration: timedelta | float | int | None = None,
         source: str | None = None,
     ) -> None:
-        self.user = user
-        self.title = title
-        self.url = url
-        self.channel = channel
-        self.channel_url = channel_url
-        self.thumbnail = thumbnail
-        self.duration = duration
+        self._user = user
+        self._title = title
+        self._url = url
+        self._channel = channel
+        self._channel_url = channel_url
+        self._thumbnail = thumbnail
+        if isinstance(duration, (float, int)):
+            duration = timedelta(seconds=duration)
+        self._duration = duration
 
-        self.source = source
+        self._source = source
 
     def __hash__(self) -> int:
-        return hash((self.user, self.source))
+        return hash((self._user, self._source))
+
+    @property
+    def user(self) -> User | Member | ClientUser | None:
+        return self._user
+
+    @property
+    def title(self) -> str:
+        return self._title if self._title is not None else "Unknown Track"
+
+    @property
+    def channel(self) -> str:
+        return self._channel if self._channel is not None else "Unknown Channel"
+
+    @property
+    def url(self) -> str | None:
+        return self._url
+
+    @property
+    def channel_url(self) -> str | None:
+        return self._channel_url
+
+    @property
+    def thumbnail(self) -> str | None:
+        return self._thumbnail
+
+    @property
+    def duration(self) -> timedelta | None:
+        return self._duration
 
     @property
     def user_name(self) -> str:
-        if self.user is None:
-            return "Unknown"
-        return self.user.display_name
+        return self.user.display_name if self.user is not None else "Unknown User"
 
     @property
     def user_icon(self) -> str | None:
-        if self.user is None:
-            return None
-        return self.user.display_avatar.url
+        return self.user.display_avatar.url if self.user is not None else None
 
     @property
     def title_markdown(self) -> str:
-        title = self.title or "Unknown"
-        if self.url is None:
-            return title
-        return f"[{title}]({self.url})"
+        return f"[{self.title}]({self.url})" if self.url is not None else self.title
 
     @property
     def channel_markdown(self) -> str:
-        channel = self.channel or "Unknown"
-        if self.channel_url is None:
-            return channel
-        return f"[{channel}]({self.channel_url})"
+        return f"[{self.channel}]({self.channel_url})" if self.channel_url is not None else self.channel
 
     def get_audio_source(
         self,
@@ -90,20 +110,20 @@ class Track:
         before_options: Iterable[str] | str | None = None,
         options: Iterable[str] | str | None = None,
     ) -> AudioSource:
-        if self.source is None:
+        if self._source is None:
             raise utils.InvalidAttributeError(f"{self.__class__.__name__}.source")
         if isinstance(before_options, Iterable) and not isinstance(before_options, str):
             before_options = " ".join(before_options)
         if isinstance(options, Iterable) and not isinstance(options, str):
             options = " ".join(options)
 
-        return FFmpegPCMAudio(self.source, before_options=before_options, options=options)
+        return FFmpegPCMAudio(self._source, before_options=before_options, options=options)
 
 
 class YouTubeDLPTrack(Track):
     @classmethod
     async def download(cls, user: User | Member | ClientUser | None, url: str) -> Self:
-        user_name = user.display_name if user is not None else "Unknown"
+        user_name = user.display_name if user is not None else "Unknown User"
         utils.logger.debug(f"Downloading Track (User: {user_name}, URL: {url})")
         info = await youtube.download(url)
         return cls.from_info(user, info)
@@ -116,8 +136,6 @@ class YouTubeDLPTrack(Track):
         channel_url = info.get("uploader_url")
         thumbnail = info.get("thumbnail")
         duration = info.get("duration")
-        if duration is not None:
-            duration = timedelta(seconds=duration)
 
         source = info.get("url")
         headers = []
@@ -189,12 +207,10 @@ class YouTubeDLPTrack(Track):
         return super().get_audio_source(before_options=before_options, options=options)
 
     def set_default_info(self, track: Track) -> Self:
-        self.title = self.title or track.title
-        self.url = self.url or track.url
-        self.channel = self.channel or track.channel
-        self.channel_url = self.channel_url or track.channel_url
-        self.thumbnail = self.thumbnail or track.thumbnail
-        self.duration = self.duration or track.duration
+        self._url = self.url or track.url
+        self._channel_url = self.channel_url or track.channel_url
+        self._thumbnail = self.thumbnail or track.thumbnail
+        self._duration = self.duration or track.duration
 
         return self
 
@@ -214,7 +230,7 @@ class GoogleSearchTrack(Track):
         results: int,
         token: str = "",
     ) -> tuple[list[Self], str]:
-        user_name = user.display_name if user is not None else "Unknown"
+        user_name = user.display_name if user is not None else "Unknown User"
         utils.logger.debug(f"Searching Tracks (User: {user_name}, Query: {word})")
         info = await youtube.search(word, results=results, token=token)
         token = info.get("nextPageToken", "")
@@ -501,7 +517,7 @@ class MusicState:
 
     def next(self, error: Exception | None) -> None:
         if error is not None:
-            track = self.queue.current.title if self.queue.current is not None else "Unknown Track"
+            track = self.queue.current.title if self.queue.current is not None else "No Track Playing"
             utils.logger.exception(f"Error in Playing (Track: {track})", exc_info=error)
         self.queue.finish()
 
@@ -525,8 +541,8 @@ class MusicState:
         finally:
             self._timeout = None
 
-        utils.logger.info(f"Start Playing (Guild: {self.guild.name}, Track: {track.title or 'Unknown Track'})")
-        await self.set_status(f"🎵 Now Playing {track.title or 'Unknown Track'}")
+        utils.logger.info(f"Start Playing (Guild: {self.guild.name}, Track: {track.title})")
+        await self.set_status(f"🎵 Now Playing {track.title}")
         self.voice.play(track.get_audio_source(), after=self.next)
         if self.queue.auto_play is not None and self.queue.empty():
             self._bot.dispatch("music_auto_play", self)

@@ -25,7 +25,7 @@ class CielTree(app_commands.CommandTree):
         self.client.dispatch("interaction_error", interaction, error, **kwargs)
 
     async def interaction_check(self, interaction: Interaction) -> bool:
-        command = interaction.command.qualified_name if interaction.command is not None else "Unknown"
+        command = interaction.command.qualified_name if interaction.command is not None else "Unknown Command"
         user = interaction.user.display_name
         guild = interaction.guild if interaction.guild is not None else "Direct Message"
         utils.logger.debug(f"Calling Command (Command: {command}, User: {user}, Guild: {guild})")
@@ -193,7 +193,7 @@ class Ciel(commands.Bot):
         self.loop.create_task(self.setup_commands())
 
     async def on_ready(self) -> None:
-        user = self.user.display_name if self.user is not None else "Unknown"
+        user = self.user.display_name if self.user is not None else "Unknown User"
         develop = "Enabled" if self.develop else "Disabled"
         utils.logger.info(f"Ciel Start-up (User: {user}, Develop Mode: {develop})")
 
