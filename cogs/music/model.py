@@ -475,12 +475,28 @@ class MusicState:
         await SESSION_SERVICE.delete_session(app_name=APP_NAME, user_id=user_id, session_id=session_id)
         await self.voice.disconnect()
 
+    async def add_track(self, track: Track) -> None:
+        if not self.is_connected():
+            raise errors.NotConnectedError
+        if not self.audio_loop.is_running():
+            raise errors.NotRunningAudioLoopError
+        if not await self.is_session_active():
+            raise utils.MissingSessionError
+        utils.logger.info(f"Adding Track (Guild: {self.guild.name}, Track: {track.title})")
+        await self.queue.put(track)
+
     async def skip(self) -> Track:
         if not self.is_connected():
             raise errors.NotConnectedError
+        if not self.audio_loop.is_running():
+            raise errors.NotRunningAudioLoopError
+        if not await self.is_session_active():
+            raise utils.MissingSessionError
+
         track = self.queue.current
         if track is None:
             raise errors.NoTrackPlayingError
+        utils.logger.info(f"Skipping Track (Guild: {self.guild.name}, Track: {track.title})")
 
         self.voice.stop()
         await self.set_status(None)
@@ -489,6 +505,10 @@ class MusicState:
     async def suggestion(self) -> GoogleSearchTrack:
         if not self.is_connected():
             raise errors.NotConnectedError
+        if not self.audio_loop.is_running():
+            raise errors.NotRunningAudioLoopError
+        if not await self.is_session_active():
+            raise utils.MissingSessionError
         if self.queue.auto_play is None or not self.queue.empty():
             raise errors.InvalidAutoPlayStateError
 
@@ -551,7 +571,7 @@ class MusicState:
         await self.set_status(None)
 
         if self.queue.queue_loop:
-            await self.queue.put(track)
+            await self.add_track(track)
 
     @audio_loop.before_loop
     async def before_audio_loop(self) -> None:
