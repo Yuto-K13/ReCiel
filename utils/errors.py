@@ -39,3 +39,23 @@ class DeveloperCommandError(MissingPermissionsError):
 class ExtensionNotFoundError(CustomError):
     def __init__(self, extension: str, *args: object) -> None:
         super().__init__(*args, msg=f'Extension "{extension}" Not Found.')
+
+
+class GoogleADKError(CustomError):
+    def __init__(self, *args: object, msg: str = "", ignore: bool = False) -> None:
+        super().__init__(*args, msg=msg or "Google ADKでエラーが発生しました", ignore=ignore)
+
+
+class MissingSessionError(GoogleADKError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="セッションが存在しません", ignore=True)
+
+
+class NoResponseReturnedError(GoogleADKError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="レスポンスが返されませんでした")
+
+
+class InvalidResponseReturnedError(GoogleADKError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args, msg="無効なレスポンスが返されました")

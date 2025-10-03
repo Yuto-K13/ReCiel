@@ -89,7 +89,7 @@ class QueueView(utils.CustomView):
         if self.hash != hash(self.state.queue):
             raise errors.QueueChangedError
 
-        track = self.state.skip()
+        track = await self.state.skip()
         embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         await interaction.response.send_message(embed=embed)
         await self.update(interaction)
@@ -194,9 +194,10 @@ class QueueTracksView(utils.CustomView):
             self.button_first.disabled = True
             self.button_back.disabled = True
         else:
+            user = self.track.user
             self.button_remove.label = "Remove"
             self.button_remove.emoji = "🗑️"
-            self.button_remove.disabled = self.track.user != self.user
+            self.button_remove.disabled = not (user is None or user.bot or user == self.user)
 
             self.button_first.disabled = False
             self.button_back.disabled = False
@@ -222,10 +223,11 @@ class QueueTracksView(utils.CustomView):
         self.check_validity(interaction)
 
         if self.index == 0:
-            track = self.state.skip()
+            track = await self.state.skip()
             embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         else:
             del self.state.queue[self.index - 1]
+            utils.logger.info(f"Removed Track (Guild: {self.state.guild.name}, Track: {self.track.title})")
             embed = TrackEmbed(track=self.track, title="Removed from the Queue", color=Color.green())
         await interaction.response.send_message(embed=embed)
         await self.update(interaction)
@@ -392,7 +394,7 @@ class GoogleSearchView(utils.CustomView):
         track = await self.track.download()
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
 
-        await self.state.queue.put(track)
+        await self.state.add_track(track)
         await interaction.edit_original_response(embed=embed)
 
     async def search_more(self, interaction: Interaction) -> None:

@@ -87,11 +87,12 @@ class CommandMapEmbed(Embed):
             lines = []
             for cmd in utils.expand_commands(cog.get_app_commands()):
                 app_cmd = self.client.tree.get_app_command(cmd)
+                guild_name = self.guild_map.get(cmd, "Unknown Guild")
                 if app_cmd is not None:
-                    lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention} ({self.guild_map.get(cmd, 'Unknown')})")
+                    lines.append(f"`{cmd.qualified_name}` -> {app_cmd.mention} ({guild_name})")
                     self.unmapped.discard(app_cmd)
                 else:
-                    lines.append(f"`{cmd.qualified_name}` -> None ({self.guild_map.get(cmd, 'Unknown')})")
+                    lines.append(f"`{cmd.qualified_name}` -> None ({guild_name})")
             self.add_field(name=cog.qualified_name, value="\n".join(lines) or "No Commands")
 
         self.add_field(
