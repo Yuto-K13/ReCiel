@@ -333,20 +333,26 @@ class MusicCog(commands.Cog, name="Music"):
 
     @app_commands.command()
     @app_commands.guild_only()
-    @app_commands.describe(word="自動再生のキーワード (未指定で無効化)")
+    @app_commands.describe(word="自動再生のキーワード")
     async def autoplay(self, interaction: Interaction, word: str = "") -> None:
         """自動再生のキーワードを設定"""
         embed = utils.CustomEmbed(interaction.user, title="Setting Auto Play...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
         state = await self.get_or_connect_state(interaction)
 
-        if word:
-            state.queue.enable_auto_play(word)
-            self.bot.dispatch("music_auto_play", state)
-            embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Enabled", color=Color.green())
-        else:
-            state.queue.disable_auto_play()
-            embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Disabled", color=Color.red())
+        state.queue.enable_auto_play(word)
+        self.bot.dispatch("music_auto_play", state)
+        embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Enabled", color=Color.green())
+        await interaction.edit_original_response(embed=embed)
+
+    @app_commands.command(name="autoplay-stop")
+    @app_commands.guild_only()
+    async def disable_autoplay(self, interaction: Interaction) -> None:
+        """自動再生を無効化"""
+        state = await self.get_connected_state(interaction)
+
+        state.queue.disable_auto_play()
+        embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Disabled", color=Color.red())
         await interaction.edit_original_response(embed=embed)
 
 
