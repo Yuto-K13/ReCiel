@@ -71,6 +71,9 @@ class MusicCog(commands.Cog, name="Music"):
 
     @commands.Cog.listener()
     async def on_music_auto_play(self, state: MusicState) -> None:
+        if state.queue.auto_play is None or not state.queue.empty():
+            return
+
         for _ in range(RETRY_SUGGESTION):
             if not await state.is_valid():
                 utils.logger.warning(f"Auto Play Cancelled (Guild: {state.guild.name})")
@@ -341,9 +344,9 @@ class MusicCog(commands.Cog, name="Music"):
         state = await self.get_or_connect_state(interaction)
 
         state.queue.enable_auto_play(word)
-        self.bot.dispatch("music_auto_play", state)
         embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Enabled", color=Color.green())
         await interaction.edit_original_response(embed=embed)
+        self.bot.dispatch("music_auto_play", state)
 
     @app_commands.command(name="autoplay-stop")
     @app_commands.guild_only()

@@ -236,9 +236,8 @@ class QueueTracksView(utils.CustomView):
             track = await self.state.skip()
             embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         else:
-            del self.state.queue[self.index - 1]
-            utils.logger.info(f"Removed Track (Guild: {self.state.guild.name}, Track: {self.track.title})")
-            embed = TrackEmbed(track=self.track, title="Removed from the Queue", color=Color.green())
+            track = await self.state.remove_track(self.index - 1)
+            embed = TrackEmbed(track=track, title="Removed from the Queue", color=Color.green())
         await interaction.response.send_message(embed=embed)
         await self.update(interaction)
 

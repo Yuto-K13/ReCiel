@@ -45,6 +45,11 @@ class NoTrackPlayingError(MusicError):
         super().__init__(*args, msg="再生中の曲がありません", ignore=True)
 
 
+class InvalidTrackIndexError(MusicError):
+    def __init__(self, index: int, queue_length: int, *args: object) -> None:
+        super().__init__(*args, msg=f"インデックスが無効です: {index}\nキューの長さ: {queue_length}", ignore=True)
+
+
 class QueueChangedError(MusicError):
     def __init__(self, *args: object) -> None:
         super().__init__(*args, msg="キューが変更されました\n`Update`ボタンを押してください", ignore=True)

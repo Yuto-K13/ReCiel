@@ -483,6 +483,7 @@ class MusicState:
         if not await self.is_session_active():
             raise utils.MissingSessionError
         utils.logger.info(f"Adding Track (Guild: {self.guild.name}, Track: {track.title})")
+
         await self.queue.put(track)
 
     async def skip(self) -> Track:
@@ -492,14 +493,30 @@ class MusicState:
             raise errors.NotRunningAudioLoopError
         if not await self.is_session_active():
             raise utils.MissingSessionError
-
-        track = self.queue.current
-        if track is None:
+        if self.queue.current is None:
             raise errors.NoTrackPlayingError
+        track = self.queue.current
         utils.logger.info(f"Skipping Track (Guild: {self.guild.name}, Track: {track.title})")
 
         self.voice.stop()
         await self.set_status(None)
+        self._bot.dispatch("music_auto_play", self)
+        return track
+
+    async def remove_track(self, index: int) -> Track:
+        if not self.is_connected():
+            raise errors.NotConnectedError
+        if not self.audio_loop.is_running():
+            raise errors.NotRunningAudioLoopError
+        if not await self.is_session_active():
+            raise utils.MissingSessionError
+        if not 0 <= index < self.queue.qsize():
+            raise errors.InvalidTrackIndexError(index, self.queue.qsize())
+        track = self.queue[index]
+        utils.logger.info(f"Removing Track (Guild: {self.guild.name}, Track: {track.title})")
+
+        del self.queue[index]
+        self._bot.dispatch("music_auto_play", self)
         return track
 
     async def suggestion(self) -> GoogleSearchTrack:
@@ -530,10 +547,10 @@ class MusicState:
         return GoogleSearchTrack(self._bot.user, **info)
 
     def cancel(self) -> None:
-        running = self.audio_loop.is_running()
-        utils.logger.debug(f"Cancelling Audio Loop (Guild: {self.guild.name}, Running: {running})")
-        if running:
-            self.audio_loop.cancel()
+        if not self.audio_loop.is_running():
+            return
+        utils.logger.debug(f"Cancelling Audio Loop (Guild: {self.guild.name})")
+        self.audio_loop.cancel()
 
     def next(self, error: Exception | None) -> None:
         if error is not None:
@@ -564,8 +581,7 @@ class MusicState:
         utils.logger.info(f"Start Playing (Guild: {self.guild.name}, Track: {track.title})")
         await self.set_status(f"🎵 Now Playing {track.title}")
         self.voice.play(track.get_audio_source(), after=self.next)
-        if self.queue.auto_play is not None and self.queue.empty():
-            self._bot.dispatch("music_auto_play", self)
+        self._bot.dispatch("music_auto_play", self)
 
         await self.queue.wait()
         await self.set_status(None)
