@@ -1,4 +1,4 @@
-from discord import Color, Embed, Interaction, app_commands
+from discord import Color, Interaction, app_commands
 from discord.enums import AppCommandType
 from discord.ext import commands
 
@@ -14,14 +14,14 @@ class GeneralCog(commands.Cog, name="General"):
     async def ping(self, interaction: Interaction) -> None:
         """応答速度の表示"""
         latency = self.bot.latency * 1000
-        embed = Embed(title="Pong!", color=Color.blue())
+        embed = utils.CustomEmbed(interaction.user, title="Pong!", color=Color.blue())
         embed.add_field(name="Latency", value=f"{latency:.2f} ms", inline=False)
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
     async def help(self, interaction: Interaction) -> None:
         """コマンドの詳細説明"""
-        embed = Embed(title="Help for Ciel", color=Color.blue())
+        embed = utils.CustomEmbed(interaction.user, title="Help for Ciel", color=Color.blue())
         for cog_name in self.bot.cogs:
             cog = self.bot.get_cog(cog_name)
             if cog is None:

@@ -1,11 +1,11 @@
-from discord import Color, Embed, Interaction, Member, VoiceState, app_commands
+from discord import Color, Interaction, Member, VoiceState, app_commands
 from discord.ext import commands
 
 import utils
 from utils.types import CielType
 
 from . import errors
-from .embed import QueueEmbed, TrackEmbed, VoiceChannelEmbed
+from .embed import QueueStatusEmbed, TrackEmbed, VoiceChannelEmbed
 from .model import GoogleSearchTrack, MusicState, YouTubeDLPTrack
 from .view import GoogleSearchView, QueueTracksView, QueueView
 
@@ -23,8 +23,8 @@ class MusicCog(commands.Cog, name="Music"):
                 continue
 
             embed = VoiceChannelEmbed(
+                self.bot.user,
                 before=state.voice.channel,
-                user=self.bot.user,
                 reason="Unload Cog.",
                 color=Color.green(),
             )
@@ -47,8 +47,8 @@ class MusicCog(commands.Cog, name="Music"):
                 return
 
         embed = VoiceChannelEmbed(
+            self.bot.user,
             before=state.voice.channel,
-            user=self.bot.user,
             reason="All Users have Left.",
             color=Color.green(),
         )
@@ -61,8 +61,8 @@ class MusicCog(commands.Cog, name="Music"):
             return
 
         embed = VoiceChannelEmbed(
+            self.bot.user,
             before=state.voice.channel,
-            user=self.bot.user,
             reason="Timeout.",
             color=Color.green(),
         )
@@ -116,7 +116,8 @@ class MusicCog(commands.Cog, name="Music"):
 
         utils.logger.error(f"Auto Play Failed to Get a Track (Guild: {state.guild.name}, Retry: {RETRY_SUGGESTION})")
         state.queue.disable_auto_play()
-        embed = Embed(
+        embed = utils.CustomEmbed(
+            self.bot.user,
             title="Failed Adding Track (Auto Play)",
             description="Failed to get a track for auto play.",
             color=Color.red(),
@@ -162,17 +163,17 @@ class MusicCog(commands.Cog, name="Music"):
         if not state.is_connected():
             await state.connect(interaction)
             embed = VoiceChannelEmbed(
+                interaction.user,
                 after=state.voice.channel,
-                user=interaction.user,
                 color=Color.green(),
             )
         elif state.get_voice_channel(interaction) != state.voice.channel:
             before = state.voice.channel
             await state.move(interaction)
             embed = VoiceChannelEmbed(
+                interaction.user,
                 before=before,
                 after=state.voice.channel,
-                user=interaction.user,
                 color=Color.green(),
             )
         elif not allow_same_channel:
@@ -195,7 +196,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def connect(self, interaction: Interaction) -> None:
         """Voice Channelに接続"""
-        embed = Embed(title="Connecting...", color=Color.light_grey())
+        embed = utils.CustomEmbed(interaction.user, title="Connecting...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
         await self.get_or_connect_state(interaction, allow_same_channel=False, allow_edit_message=True)
 
@@ -207,7 +208,7 @@ class MusicCog(commands.Cog, name="Music"):
 
         channel = state.voice.channel
         await state.disconnect()
-        embed = VoiceChannelEmbed(before=channel, user=interaction.user, color=Color.green())
+        embed = VoiceChannelEmbed(interaction.user, before=channel, color=Color.green())
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
@@ -215,7 +216,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def play(self, interaction: Interaction, url: str) -> None:
         """URLから曲をキューに追加"""
-        embed = Embed(title="Fetching...", color=Color.light_grey())
+        embed = utils.CustomEmbed(interaction.user, title="Fetching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
 
         state = await self.get_or_connect_state(interaction)
@@ -237,7 +238,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def search_top(self, interaction: Interaction, word: str) -> None:
         """YouTubeで曲を検索してキューに追加"""
-        embed = Embed(title="Searching...", color=Color.light_grey())
+        embed = utils.CustomEmbed(interaction.user, title="Searching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
 
         state = await self.get_or_connect_state(interaction)
@@ -269,7 +270,7 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.guild_only()
     async def search_all(self, interaction: Interaction, word: str) -> None:
         """YouTubeで曲を検索した結果を選択してキューに追加"""
-        embed = Embed(title="Searching...", color=Color.light_grey())
+        embed = utils.CustomEmbed(interaction.user, title="Searching...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         state = await self.get_or_connect_state(interaction)
         state.reset_timer()
@@ -295,9 +296,19 @@ class MusicCog(commands.Cog, name="Music"):
         state = await self.get_connected_state(interaction)
 
         if state.queue.toggle():
-            embed = QueueEmbed(state.queue, title="Loop Enabled", color=Color.green())
+            embed = QueueStatusEmbed(
+                interaction.user,
+                state.queue,
+                title="Queue Loop Enabled",
+                color=Color.green(),
+            )
         else:
-            embed = QueueEmbed(state.queue, title="Loop Disabled", color=Color.red())
+            embed = QueueStatusEmbed(
+                interaction.user,
+                state.queue,
+                title="Queue Loop Disabled",
+                color=Color.red(),
+            )
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command()
@@ -325,17 +336,17 @@ class MusicCog(commands.Cog, name="Music"):
     @app_commands.describe(word="自動再生のキーワード (未指定で無効化)")
     async def autoplay(self, interaction: Interaction, word: str = "") -> None:
         """自動再生のキーワードを設定"""
-        embed = Embed(title="Setting Auto Play...", color=Color.light_grey())
+        embed = utils.CustomEmbed(interaction.user, title="Setting Auto Play...", color=Color.light_grey())
         await interaction.response.send_message(embed=embed)
         state = await self.get_or_connect_state(interaction)
 
         if word:
             state.queue.enable_auto_play(word)
             self.bot.dispatch("music_auto_play", state)
-            embed = QueueEmbed(state.queue, title="Auto Play Enabled", color=Color.green())
+            embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Enabled", color=Color.green())
         else:
             state.queue.disable_auto_play()
-            embed = QueueEmbed(state.queue, title="Auto Play Disabled", color=Color.red())
+            embed = QueueStatusEmbed(interaction.user, state.queue, title="Auto Play Disabled", color=Color.red())
         await interaction.edit_original_response(embed=embed)
 
 

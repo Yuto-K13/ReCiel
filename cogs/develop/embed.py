@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from discord import Color, Embed
+from discord import ClientUser, Color, Member, User
 from discord.app_commands import Command
 from discord.enums import AppCommandType
 from discord.types.embed import EmbedType
@@ -10,9 +10,10 @@ import utils
 from utils.types import CielType
 
 
-class ExtensionEmbed(Embed):
+class ExtensionEmbed(utils.CustomEmbed):
     def __init__(
         self,
+        user: User | Member | ClientUser | None,
         client: CielType,
         *,
         colour: int | Color | None = None,
@@ -25,6 +26,7 @@ class ExtensionEmbed(Embed):
     ) -> None:
         self.client = client
         super().__init__(
+            user=user,
             title=title,
             colour=colour,
             color=color,
@@ -33,9 +35,8 @@ class ExtensionEmbed(Embed):
             description=description,
             timestamp=timestamp,
         )
-        self.format()
 
-    def format(self) -> None:
+    def format_fields(self) -> None:
         extension_files = set(self.client.extension_files())
         extension_loaded = set(self.client.extensions)
         self.loaded = sorted(extension_loaded)
@@ -47,9 +48,10 @@ class ExtensionEmbed(Embed):
         self.add_field(name="Missing File Extensions", value="\n".join(self.missing_file) or "No Extensions")
 
 
-class CommandMapEmbed(Embed):
+class CommandMapEmbed(utils.CustomEmbed):
     def __init__(
         self,
+        user: User | Member | ClientUser | None,
         client: CielType,
         *,
         colour: int | Color | None = None,
@@ -62,6 +64,7 @@ class CommandMapEmbed(Embed):
     ) -> None:
         self.client = client
         super().__init__(
+            user=user,
             title=title,
             colour=colour,
             color=color,
@@ -70,11 +73,11 @@ class CommandMapEmbed(Embed):
             description=description,
             timestamp=timestamp,
         )
-        self.format()
 
-    def format(self) -> None:
+    def format_fields(self) -> None:
         self.unmapped = set(self.client.tree.command_map.values())
         self.guild_map: dict[Command, str] = {}
+
         for guild in (None, *self.client.guilds):
             cmds = self.client.tree.get_commands(guild=guild, type=AppCommandType.chat_input)
             for cmd in utils.expand_commands(cmds):

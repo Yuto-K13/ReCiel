@@ -5,6 +5,8 @@ from discord import Color, Embed, Interaction
 from discord.types.embed import EmbedType
 from discord.ui import Item, View
 
+import utils
+
 TIMEOUT = 180
 
 
@@ -24,7 +26,7 @@ class CustomView(View):
 
     @property
     def embed(self) -> Embed:
-        return Embed(**self.embed_kwargs)
+        return utils.CustomEmbed(self.interaction.user, **self.embed_kwargs)
 
     def set_embed(
         self,
