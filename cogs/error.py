@@ -1,4 +1,4 @@
-from discord import Color, Embed, Interaction, app_commands
+from discord import Color, Interaction, app_commands
 from discord.ext import commands
 
 import utils
@@ -33,7 +33,7 @@ class ErrorCog(commands.Cog, name="Error"):
     @utils.developer_only()
     async def raise_error(self, interaction: Interaction) -> None:
         """Raise a test error."""
-        embed = Embed(title="Raising TestError", color=Color.light_grey())
+        embed = utils.CustomEmbed(interaction.user, title="Raising TestError", color=Color.light_grey())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         raise utils.CustomError("Raised TestError", name="TestError")
 

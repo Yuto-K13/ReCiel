@@ -8,7 +8,7 @@ from discord.ui import Button, Item
 import utils
 
 from . import errors
-from .embed import QueueEmbed, TrackEmbed
+from .embed import QueueEmbed, QueueStatusEmbed, TrackEmbed
 from .model import GoogleSearchTrack, MusicState, Track
 
 
@@ -46,7 +46,7 @@ class QueueView(utils.CustomView):
 
     @property
     def embed(self) -> Embed:
-        return QueueEmbed(self.state.queue, **self.embed_kwargs)
+        return QueueEmbed(self.interaction.user, self.state.queue, **self.embed_kwargs)
 
     async def update(self, interaction: Interaction) -> None:
         if not self.state.is_connected():
@@ -77,9 +77,19 @@ class QueueView(utils.CustomView):
             raise errors.QueueChangedError
 
         if self.state.queue.toggle():
-            embed = Embed(title="Loop Enabled", color=Color.green())
+            embed = QueueStatusEmbed(
+                self.interaction.user,
+                self.state.queue,
+                title="Queue Loop Enabled",
+                color=Color.green(),
+            )
         else:
-            embed = Embed(title="Loop Disabled", color=Color.red())
+            embed = QueueStatusEmbed(
+                self.interaction.user,
+                self.state.queue,
+                title="Queue Loop Disabled",
+                color=Color.red(),
+            )
         await interaction.response.send_message(embed=embed, ephemeral=True)
         await self.update(interaction)
 
@@ -165,7 +175,7 @@ class QueueTracksView(utils.CustomView):
     def embed(self) -> Embed:
         if not self.queue:
             self.embed_kwargs["title"] = "No Tracks in the Queue"
-            return Embed(**self.embed_kwargs)
+            return utils.CustomEmbed(self.interaction.user, **self.embed_kwargs)
 
         if self.index == 0:
             self.embed_kwargs["title"] = "Now Playing"
@@ -226,9 +236,8 @@ class QueueTracksView(utils.CustomView):
             track = await self.state.skip()
             embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         else:
-            del self.state.queue[self.index - 1]
-            utils.logger.info(f"Removed Track (Guild: {self.state.guild.name}, Track: {self.track.title})")
-            embed = TrackEmbed(track=self.track, title="Removed from the Queue", color=Color.green())
+            track = await self.state.remove_track(self.index - 1)
+            embed = TrackEmbed(track=track, title="Removed from the Queue", color=Color.green())
         await interaction.response.send_message(embed=embed)
         await self.update(interaction)
 
