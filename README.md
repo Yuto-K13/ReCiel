@@ -18,8 +18,7 @@ Youtubeなどの動画URLから音声を再生する機能
 
 - **`/search-all <word>`** : キーワードで動画を検索 結果から選択して再生
 - **`/play <url>`** : 指定した動画URLの音声を再生
-- **`/queue`** : キューの情報を表示
-- **`/track`** : キューの詳細な情報を表示
+- **`/autoplay [word]`** : キーワードに適した楽曲をAIが自動で選曲
 
 ### 👑 開発者用 (Develop)
 
@@ -38,6 +37,7 @@ Botのオーナーのみが使用できる機能
 - Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications)から取得可能)
 - Google API Key ([Google Cloud Platform](https://console.cloud.google.com)から取得可能 以下のAPIを有効化)
   - Youtube Data API v3
+  - Generative Language API
 
 ### インストール (Installation)
 
@@ -85,15 +85,18 @@ uv run python main.py
 │   │   └── embed.py      # 専用Embed
 │   ├── music/            # 音楽用コマンド（サブディレクトリ）
 │   │   ├── __init__.py   # 初期化処理
+│   │   ├── agent.py      # 音楽提案エージェント
 │   │   ├── core.py       # 主要処理
 │   │   ├── embed.py      # 専用Embed
 │   │   ├── errors.py     # 専用エラークラス
 │   │   ├── model.py      # データモデル
-│   │   └── view.py       # 専用View
+│   │   ├── view.py       # 専用View
+│   │   └── youtube.py    # YouTube関連処理
 │   ├── error.py       # エラーハンドリング
 │   └── general.py     # 一般コマンド
 ├── utils/             # ユーティリティ（補助機能）ディレクトリ
 │   ├── __init__.py    # 初期化処理
+│   ├── agent.py       # Google ADK関連
 │   ├── commands.py    # コマンド関連機能
 │   ├── decorators.py  # コマンド用デコレーター
 │   ├── embed.py       # Embed関連
