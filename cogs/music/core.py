@@ -73,6 +73,7 @@ class MusicCog(commands.Cog, name="Music"):
     async def on_music_auto_play(self, state: MusicState) -> None:
         for _ in range(RETRY_SUGGESTION):
             if not await state.is_valid():
+                utils.logger.warning(f"Auto Play Cancelled (Guild: {state.guild.name})")
                 return
 
             state.reset_timer()
@@ -86,10 +87,12 @@ class MusicCog(commands.Cog, name="Music"):
                 continue
 
             if not await state.is_valid():
+                utils.logger.warning(f"Auto Play Cancelled (Guild: {state.guild.name})")
                 embed = TrackEmbed(track=track, title="Cancelled Adding Track (Auto Play)", color=Color.red())
                 await state.message.channel.send(embed=embed)
                 return
 
+            utils.logger.info(f"Auto Play Suggested Track (Guild: {state.guild.name}, Track: {track.title})")
             embed = TrackEmbed(track=track, title="Fetching the Track... (Auto Play)", color=Color.light_grey())
             message = await state.message.channel.send(embed=embed)
 
@@ -101,15 +104,17 @@ class MusicCog(commands.Cog, name="Music"):
                 continue
 
             if not await state.is_valid():
+                utils.logger.warning(f"Auto Play Cancelled (Guild: {state.guild.name})")
                 embed = TrackEmbed(track=track, title="Cancelled Adding Track (Auto Play)", color=Color.red())
                 await message.edit(embed=embed)
                 return
 
             embed = TrackEmbed(track=track, title="Added to the Queue (Auto Play)", color=Color.green())
-            await state.queue.put(track)
+            await state.add_track(track)
             await message.edit(embed=embed)
             return
 
+        utils.logger.error(f"Auto Play Failed to Get a Track (Guild: {state.guild.name}, Retry: {RETRY_SUGGESTION})")
         state.queue.disable_auto_play()
         embed = Embed(
             title="Failed Adding Track (Auto Play)",
@@ -224,7 +229,7 @@ class MusicCog(commands.Cog, name="Music"):
             return
 
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
-        await state.queue.put(track)
+        await state.add_track(track)
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command(name="search-top")
@@ -256,7 +261,7 @@ class MusicCog(commands.Cog, name="Music"):
             return
 
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
-        await state.queue.put(track)
+        await state.add_track(track)
         await interaction.edit_original_response(embed=embed)
 
     @app_commands.command(name="search-all")

@@ -227,6 +227,7 @@ class QueueTracksView(utils.CustomView):
             embed = TrackEmbed(track=track, title="Skipped Now Playing", color=Color.green())
         else:
             del self.state.queue[self.index - 1]
+            utils.logger.info(f"Removed Track (Guild: {self.state.guild.name}, Track: {self.track.title})")
             embed = TrackEmbed(track=self.track, title="Removed from the Queue", color=Color.green())
         await interaction.response.send_message(embed=embed)
         await self.update(interaction)
@@ -393,7 +394,7 @@ class GoogleSearchView(utils.CustomView):
         track = await self.track.download()
         embed = TrackEmbed(track=track, title="Added to the Queue", color=Color.green())
 
-        await self.state.queue.put(track)
+        await self.state.add_track(track)
         await interaction.edit_original_response(embed=embed)
 
     async def search_more(self, interaction: Interaction) -> None:
