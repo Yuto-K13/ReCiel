@@ -1,4 +1,8 @@
+import re
+
 from discord.app_commands import AppCommandError
+
+PATTERN = re.compile(r"\x1b\[[0-9;]*m")  # ANSIエスケープシーケンスを除去
 
 
 class CustomError(AppCommandError):
@@ -10,8 +14,11 @@ class CustomError(AppCommandError):
 
     def __str__(self) -> str:
         if not self.msg:
-            return "\n".join(map(str, self.args))
-        return "\n".join(map(str, (self.msg, *self.args)))
+            return "\n".join(map(self.format, self.args))
+        return "\n".join(map(self.format, (self.msg, *self.args)))
+
+    def format(self, msg: object) -> str:
+        return PATTERN.sub("", str(msg))
 
 
 class InvalidAttributeError(CustomError):

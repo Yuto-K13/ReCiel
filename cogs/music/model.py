@@ -1,34 +1,19 @@
 import asyncio
 import collections
-import datetime
-import os
-import urllib.parse
 from collections.abc import Generator, Iterable
-from concurrent.futures import ProcessPoolExecutor
+from datetime import timedelta
 from typing import Self
 
-import aiohttp
-import yt_dlp
-import yt_dlp.utils
-from discord import AudioSource, FFmpegPCMAudio, Interaction, Member, Message, User, VoiceChannel, VoiceClient
-from discord.channel import VocalGuildChannel
+from discord import ClientUser, Guild, Interaction, Member, Message, User, VoiceClient
+from discord.channel import VocalGuildChannel, VoiceChannel
 from discord.ext import tasks
+from discord.player import AudioSource, FFmpegPCMAudio
 
 import utils
 from utils.types import CielType
 
-from . import errors
+from . import errors, youtube
 
-YTDLP_OPTIONS = {
-    "format": "bestaudio/best",
-    "quiet": True,
-    "noplaylist": True,
-    "no_warnings": True,
-    "ignore_errors": True,
-    "noprogress": True,
-    "geo-country": "JP",
-    "max_results": 1,
-}
 FFMPEG_BEFORE_OPTIONS = [
     "-reconnect 1",
     "-reconnect_streamed 1",
@@ -48,14 +33,14 @@ TIMEOUT = 300
 class Track:
     def __init__(
         self,
-        user: User | Member,
+        user: User | Member | ClientUser | None,
         *,
         title: str | None = None,
         url: str | None = None,
         channel: str | None = None,
         channel_url: str | None = None,
         thumbnail: str | None = None,
-        duration: datetime.timedelta | None = None,
+        duration: timedelta | None = None,
         source: str | None = None,
     ) -> None:
         self.user = user
@@ -70,6 +55,18 @@ class Track:
 
     def __hash__(self) -> int:
         return hash((self.user, self.source))
+
+    @property
+    def user_name(self) -> str:
+        if self.user is None:
+            return "Unknown"
+        return self.user.display_name
+
+    @property
+    def user_icon(self) -> str | None:
+        if self.user is None:
+            return None
+        return self.user.display_avatar.url
 
     @property
     def title_markdown(self) -> str:
@@ -102,42 +99,38 @@ class Track:
 
 
 class YouTubeDLPTrack(Track):
-    @staticmethod
-    def _download(url: str) -> dict:
-        try:
-            with yt_dlp.YoutubeDL(YTDLP_OPTIONS) as ydl:  # pyright: ignore[reportArgumentType]
-                info = ydl.extract_info(url, download=False)
-                info = ydl.sanitize_info(info)
-        except yt_dlp.utils.DownloadError as e:
-            raise errors.DownloadError(str(e)) from e
-        except yt_dlp.utils.YoutubeDLError as e:
-            raise errors.YouTubeDLPError(str(e)) from e
-        return info  # pyright: ignore[reportReturnType]
-
     @classmethod
-    async def download(cls, user: User | Member, url: str) -> Self:
-        loop = asyncio.get_running_loop()
-        with ProcessPoolExecutor() as executor:
-            info = await loop.run_in_executor(executor, cls._download, url)
-
+    async def download(cls, user: User | Member | ClientUser | None, url: str) -> Self:
+        user_name = user.display_name if user is not None else "Unknown"
+        utils.logger.debug(f"Downloading Track (User: {user_name}, URL: {url})")
+        info = await youtube.download(url)
         return cls.from_info(user, info)
 
     @classmethod
-    def from_info(cls, user: User | Member, info: dict) -> Self:
+    def from_info(cls, user: User | Member | ClientUser | None, info: dict) -> Self:
         title = info.get("title")
         url = info.get("webpage_url")
         channel = info.get("uploader")
         channel_url = info.get("uploader_url")
         thumbnail = info.get("thumbnail")
-        if duration := info.get("duration"):
-            duration = datetime.timedelta(seconds=duration)
+        duration = info.get("duration")
+        if duration is not None:
+            duration = timedelta(seconds=duration)
 
         source = info.get("url")
         headers = []
-        if http_headers := info.get("http_headers"):
+        http_headers = info.get("http_headers")
+        if http_headers is not None:
             headers.extend([f"{key}: {value}" for key, value in http_headers.items()])
-        if cookies := info.get("cookies"):
+        cookies = info.get("cookies")
+        if cookies is not None:
             headers.append(f"Cookie: {cookies}")
+
+        extractor = info.get("extractor")
+        if extractor == "niconico":
+            uploader_id = info.get("uploader_id")
+            if uploader_id is not None and channel_url is None:
+                channel_url = f"https://www.nicovideo.jp/user/{uploader_id}"
 
         return cls(
             user=user,
@@ -153,14 +146,14 @@ class YouTubeDLPTrack(Track):
 
     def __init__(
         self,
-        user: User | Member,
+        user: User | Member | ClientUser | None,
         *,
         title: str | None = None,
         url: str | None = None,
         channel: str | None = None,
         channel_url: str | None = None,
         thumbnail: str | None = None,
-        duration: datetime.timedelta | None = None,
+        duration: timedelta | None = None,
         source: str | None = None,
         headers: list[str] | None = None,
     ) -> None:
@@ -205,44 +198,30 @@ class YouTubeDLPTrack(Track):
 
 
 class GoogleSearchTrack(Track):
-    API_KEY = os.getenv("GOOGLE_API_KEY")
-    API_URL = "https://www.googleapis.com/youtube/v3/search"
-
     @classmethod
-    async def search_top(cls, user: User | Member, word: str) -> Self:
+    async def search_top(cls, user: User | Member | ClientUser, word: str) -> Self:
         tracks, _ = await cls.search(user, word, results=1)
         return tracks[0]
 
     @classmethod
-    async def search(cls, user: User | Member, word: str, *, results: int, token: str = "") -> tuple[list[Self], str]:
-        if cls.API_KEY is None:
-            raise errors.GoogleAPIError("'GOOGLE_API_KEY' is not found.")
-
-        query = {
-            "part": "snippet",
-            "type": "video",
-            "maxResults": results,
-            "q": word,
-            "key": cls.API_KEY,
-            "pageToken": token,
-        }
-        parse = urllib.parse.urlparse(cls.API_URL)
-        parse = parse._replace(query=urllib.parse.urlencode(query))
-        url = urllib.parse.urlunparse(parse)
-
-        async with aiohttp.ClientSession() as session, session.get(url) as res:
-            infos: dict = await res.json()
-        if "error" in infos:
-            error_info: dict = infos["error"]
-            raise errors.SearchError(error_info.get("message"))
-
-        token = infos.get("nextPageToken", "")
-        tracks = [cls.from_info(user, info) for info in infos.get("items", [])]
+    async def search(
+        cls,
+        user: User | Member | ClientUser | None,
+        word: str,
+        *,
+        results: int,
+        token: str = "",
+    ) -> tuple[list[Self], str]:
+        user_name = user.display_name if user is not None else "Unknown"
+        utils.logger.debug(f"Searching Tracks (User: {user_name}, Query: {word})")
+        info = await youtube.search(word, results=results, token=token)
+        token = info.get("nextPageToken", "")
+        tracks = [cls.from_info(user, i) for i in info.get("items", [])]
 
         return tracks, token
 
     @classmethod
-    def from_info(cls, user: User | Member, info: dict[str, dict]) -> Self:
+    def from_info(cls, user: User | Member | ClientUser | None, info: dict[str, dict]) -> Self:
         snippet = info.get("snippet", {})
 
         title = snippet.get("title")
@@ -291,6 +270,12 @@ class MusicQueue(asyncio.Queue):
         self._current = track
         self._playing.clear()
         return track
+
+    async def put(self, item: Track) -> None:
+        return await super().put(item)
+
+    async def get(self) -> Track:
+        return await super().get()
 
     def __getitem__(self, idx: int) -> Track:
         return self._queue[idx]
@@ -351,14 +336,20 @@ class MusicState:
             return None
         return user.voice.channel
 
-    def __init__(self, bot: CielType) -> None:
+    def __init__(self, bot: CielType, guild: Guild) -> None:
         self._bot = bot
+        self._guild = guild
         self._message: Message | None = None
         self._voice: VoiceClient | None = None
+        self.timeout: asyncio.Timeout | None = None
         self.queue = MusicQueue()
 
     def __del__(self) -> None:
         self.cancel()
+
+    @property
+    def guild(self) -> Guild:
+        return self._guild
 
     @property
     def message(self) -> Message:
@@ -368,6 +359,8 @@ class MusicState:
 
     @message.setter
     def message(self, message: Message) -> None:
+        if not isinstance(message, Message):
+            raise TypeError(f"Requires Message instance, not {message.__class__.__name__}")
         self._message = message
 
     @property
@@ -379,12 +372,17 @@ class MusicState:
     def is_connected(self) -> bool:
         return self._voice is not None and self._voice.is_connected()
 
+    async def set_status(self, status: str | None) -> None:
+        if isinstance(self.voice.channel, VoiceChannel):
+            await self.voice.channel.edit(status=status)
+
     async def connect(self, interaction: Interaction) -> None:
         channel = self.get_voice_channel(interaction)
         if channel is None:
             raise errors.UserNotInVoiceChannelError
         if channel.guild != interaction.guild:
             raise errors.UserNotInSameGuildError
+        utils.logger.debug(f"Connecting (Guild: {self.guild.name}, Channel: {channel.name})")
 
         if self.is_connected():
             raise errors.AlreadyConnectedError
@@ -398,12 +396,13 @@ class MusicState:
             raise errors.UserNotInVoiceChannelError
         if channel.guild != interaction.guild:
             raise errors.UserNotInSameGuildError
-
         if not self.is_connected():
             raise errors.NotConnectedError
         if self.voice.channel == channel:
             raise errors.AlreadyConnectedError
+        utils.logger.debug(f"Moving (Guild: {self.guild.name}, Channel: {self.voice.channel.name} -> {channel.name})")
 
+        await self.set_status(None)
         await self.voice.move_to(channel)
         if self.audio_loop.is_running():
             self.audio_loop.restart()
@@ -413,12 +412,16 @@ class MusicState:
     async def disconnect(self) -> None:
         if not self.is_connected():
             raise errors.NotConnectedError
+        utils.logger.debug(f"Disconnecting (Guild: {self.guild.name}, Channel: {self.voice.channel.name})")
 
         self.cancel()
+        await self.set_status(None)
         await self.voice.disconnect()
 
     def cancel(self) -> None:
-        if self.audio_loop.is_running():
+        running = self.audio_loop.is_running()
+        utils.logger.debug(f"Cancelling Audio Loop (Guild: {self.guild.name}, Running: {running})")
+        if running:
             self.audio_loop.cancel()
 
     def skip(self) -> Track:
@@ -433,30 +436,28 @@ class MusicState:
 
     def next(self, error: Exception | None) -> None:
         if error is not None:
-            track = self.queue.current
-            utils.logger.exception(f"Error: {track.title if track is not None else 'Unknown Track'}", exc_info=error)
+            track = self.queue.current.title if self.queue.current is not None else "Unknown Track"
+            utils.logger.exception(f"Error in Playing (Track: {track})", exc_info=error)
         self.queue.finish()
 
-    async def reset_timer(self) -> None:
-        if self.queue.empty() and not self.queue.playing:
-            await self.queue.put(None)
+    def when_timeout(self) -> float:
+        return self._bot.loop.time() + TIMEOUT
 
-    async def set_status(self, status: str | None) -> None:
-        if isinstance(self.voice.channel, VoiceChannel):
-            await self.voice.channel.edit(status=status)
+    def reset_timer(self) -> None:
+        utils.logger.debug(f"Resetting Timeout Timer (Guild: {self.guild.name})")
+        if self.timeout is not None and not self.timeout.expired():
+            self.timeout.reschedule(self.when_timeout())
 
     @tasks.loop()
     async def audio_loop(self) -> None:
         try:
-            track: Track | None = await asyncio.wait_for(self.queue.get(), timeout=TIMEOUT)
+            async with asyncio.timeout_at(self.when_timeout()) as self.timeout:
+                track = await self.queue.get()
         except TimeoutError:
             self._bot.dispatch("music_timeout", self)
             self.audio_loop.stop()
             return
 
-        if track is None:
-            self.queue.finish()
-            return
         await self.set_status(f"🎵 Now Playing {track.title or 'Unknown Track'}")
         self.voice.play(track.get_audio_source(), after=self.next)
         await self.queue.wait()
@@ -468,10 +469,13 @@ class MusicState:
     @audio_loop.before_loop
     async def before_audio_loop(self) -> None:
         await self._bot.wait_until_ready()
+        utils.logger.debug(f"Starting Audio Loop (Guild: {self.guild.name})")
 
     @audio_loop.after_loop
     async def after_audio_loop(self) -> None:
-        if self.audio_loop.is_being_cancelled():
-            self.queue.clear()
-            if self.is_connected() and self.voice.is_playing():
-                self.voice.stop()
+        canceled = self.audio_loop.is_being_cancelled()
+        utils.logger.debug(f"Ending Audio Loop (Guild: {self.guild.name}, Canceled: {canceled})")
+
+        self.queue.clear()
+        if canceled and self.is_connected() and self.voice.is_playing():
+            self.voice.stop()

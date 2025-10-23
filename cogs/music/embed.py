@@ -97,10 +97,7 @@ class TrackEmbed(Embed):
         if self.track.thumbnail is not None:
             self.set_thumbnail(url=self.track.thumbnail)
 
-        self.set_footer(
-            text=f"Requested by {self.track.user.display_name}",
-            icon_url=self.track.user.display_avatar.url,
-        )
+        self.set_footer(text=f"Requested by {self.track.user_name}", icon_url=self.track.user_icon)
 
 
 class QueueEmbed(Embed):
@@ -132,11 +129,11 @@ class QueueEmbed(Embed):
         text = "No Track"
         if self.queue.current is not None:
             self.set_thumbnail(url=self.queue.current.thumbnail)
-            text = f"{self.queue.current.title_markdown}\nRequested by **{self.queue.current.user.display_name}**"
+            text = f"{self.queue.current.title_markdown}\nRequested by **{self.queue.current.user_name}**"
         self.add_field(name="Now Playing", value=text, inline=False)
 
         lines = [
-            f"{track.title_markdown} | Requested by **{track.user.display_name}**"
+            f"{track.title_markdown} | Requested by **{track.user_name}**"
             for track in self.queue.all(current=False)
             if track is not None
         ]
