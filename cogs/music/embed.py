@@ -5,7 +5,7 @@ from discord import ClientUser, Color, Embed, Member, User
 from discord.channel import VocalGuildChannel
 from discord.types.embed import EmbedType
 
-from . import error
+from . import errors
 from .model import MusicQueue, Track
 
 
@@ -51,7 +51,7 @@ class VoiceChannelEmbed(Embed):
             title = "Connected to the Voice Channel"
             channel = self.after.mention
         else:
-            raise error.MusicError("Before and After are both None.")
+            raise errors.MusicError("Before and After are both None.")
 
         if self.title is None:
             self.title = title
